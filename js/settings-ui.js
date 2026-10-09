@@ -10,7 +10,23 @@ window.addEventListener('beforeinstallprompt', (e) => {
   installEvent = e;
 });
 
-const fmt = (n) => (n > 1e9 ? `${(n / 1e9).toFixed(1)} GB` : n > 1e6 ? `${(n / 1e6).toFixed(1)} MB` : `${Math.round(n / 1e3)} KB`);
+const fmt = (n) => (n >= 1e9 ? `${(n / 1e9).toFixed(1)} GB` : n >= 1e6 ? `${(n / 1e6).toFixed(1)} MB` : n >= 1e3 ? `${Math.round(n / 1e3)} KB` : `${n} B`);
+
+/** Exact bytes of what the app stores, by category. */
+function measure(qr, tags) {
+  const size = (b) => (b instanceof Blob ? b.size : 0);
+  const textBytes = (obj) => new Blob([JSON.stringify(obj, (k, v) => (v instanceof Blob ? undefined : v))]).size;
+  let prefs = 0;
+  try {
+    prefs = (localStorage.getItem('mz.frame') ?? '').length;
+  } catch { /* storage unavailable */ }
+  return {
+    tagPhotos: tags.reduce((n, t) => n + size(t.photo), 0),
+    qrImages: qr.reduce((n, q) => n + size(q.image), 0),
+    backgrounds: qr.reduce((n, q) => n + size(q.frame?.background), 0),
+    text: textBytes(qr) + textBytes(tags) + prefs,
+  };
+}
 
 export async function renderSettings(view) {
   const [qr, tags] = await Promise.all([dbAll('qr'), dbAll('tags')]);
@@ -19,8 +35,27 @@ export async function renderSettings(view) {
   const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
   const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
 
+  const bytes = measure(qr, tags);
+  const dataTotal = bytes.tagPhotos + bytes.qrImages + bytes.backgrounds + bytes.text;
+
   view.innerHTML = `
     <h1 class="screen-title">Settings</h1>
+    <section class="panel privacy">
+      <h2>🔒 Privacy &amp; how your data is stored</h2>
+      <p><b>Nothing is uploaded. There is no server and no account.</b> Your E-TrainerID, tags, photos and
+        support QR codes are saved only inside this browser on this device. The app works fully offline.</p>
+      <ul class="muted">
+        <li><b>Pictures</b> you crop are saved as image files in the browser's on-device database (IndexedDB):
+          QR codes as lossless PNG, tag photos and backgrounds as JPEG (90% quality, max 1600 px).</li>
+        <li><b>Text</b> such as names, notes, favorites, decoded QR data and frame designs is saved in the same database.</li>
+        <li><b>Your last-used frame style</b> is remembered in browser storage (localStorage), so new cards start with it.</li>
+        <li>The only network use is <b>optional Pokémon artwork</b> for tags without a photo, which is downloaded
+          from PokéAPI's public image library. Nothing about you is sent.</li>
+      </ul>
+      <p class="muted"><b>Important:</b> because nothing is on a server, clearing this site's browser data,
+        uninstalling the app, or losing your phone deletes your data. Use <b>Export backup</b> to keep a copy
+        or move to a new phone.</p>
+    </section>
     <section class="panel">
       <h2>Your data</h2>
       <p class="muted">${qr.filter((q) => q.kind === 'trainer').length ? 'E-TrainerID saved' : 'No E-TrainerID'}
@@ -34,8 +69,20 @@ export async function renderSettings(view) {
     </section>
     <section class="panel">
       <h2>Storage</h2>
-      <p class="muted">${est ? `Using ${fmt(est.usage)} of ${fmt(est.quota)} available.` : 'Storage estimate unavailable.'}</p>
-      <p class="muted">${persisted ? '✅ Protected from automatic browser cleanup.' : '⚠️ Not yet protected from browser cleanup.'}</p>
+      <table class="usage">
+        <tr><td>Tag photos (${tags.filter((t) => t.photo).length})</td><td>${fmt(bytes.tagPhotos)}</td></tr>
+        <tr><td>QR images (${qr.length})</td><td>${fmt(bytes.qrImages)}</td></tr>
+        <tr><td>Frame backgrounds (${qr.filter((q) => q.frame?.background).length})</td><td>${fmt(bytes.backgrounds)}</td></tr>
+        <tr><td>Text &amp; settings</td><td>${fmt(bytes.text)}</td></tr>
+        <tr class="total"><td>Your data</td><td>${fmt(dataTotal)}</td></tr>
+        ${est ? `
+        <tr><td>Total used on this device*</td><td>${fmt(est.usage)}</td></tr>
+        <tr><td>Space the browser allows*</td><td>${fmt(est.quota)}</td></tr>` : ''}
+      </table>
+      <p class="muted small">“Your data” is the exact size of the pictures and text saved by the app.
+        *Totals come from your browser (<code>navigator.storage.estimate()</code>). They also include the offline copy
+        of the app itself, and some browsers round or pad them for privacy, so they won't add up exactly.</p>
+      <p class="muted">${persisted ? '✅ Protected from automatic browser cleanup.' : '⚠️ Not yet protected from browser cleanup. When the phone is low on space, the browser may clear data of sites you rarely use.'}</p>
       ${persisted ? '' : '<button class="btn" data-act="persist">Protect my data</button>'}
     </section>
     ${standalone ? '' : `

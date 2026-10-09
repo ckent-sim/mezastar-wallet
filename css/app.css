@@ -253,3 +253,15 @@ input[type=color] { width: 44px; height: 34px; border: 1px solid var(--line); bo
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }
 }
+
+/* ---------- settings: privacy + usage ---------- */
+.privacy { border-color: #2f5a3a; }
+.privacy p:first-of-type { margin-top: 8px; }
+.privacy ul { padding-left: 18px; margin: 8px 0; }
+.privacy li { margin-bottom: 6px; }
+.usage { width: 100%; border-collapse: collapse; margin: 6px 0 10px; font-variant-numeric: tabular-nums; }
+.usage td { padding: 5px 0; border-bottom: 1px solid var(--line); }
+.usage td:last-child { text-align: right; }
+.usage tr.total td { font-weight: 700; border-bottom-width: 2px; }
+.panel code { font-size: 12px; }
+.empty a { color: var(--yellow); }

@@ -337,6 +337,7 @@ export async function renderTrainer(view) {
         <div class="empty-art">🪪</div>
         <p>Import a photo or screenshot of your Trainer ID QR code. You'll crop it, and the app redraws it as a crisp E-TrainerID card.</p>
         <button class="btn primary big" data-act="import">＋ Import Trainer ID QR</button>
+        <p class="small">🔒 Saved only on this device. Never uploaded to any server. <a href="#settings">How it works</a></p>
       </div>`);
     view.querySelector('[data-act=import]').addEventListener('click', async () => {
       if (await importQr('trainer')) renderTrainer(view);
