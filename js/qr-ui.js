@@ -1,6 +1,6 @@
 // E-TrainerID + Support QR screens: import → crop → decode, framed card, frame editor, scan mode.
 import { dbAll, dbPut, dbDelete } from './db.js';
-import { decodeQr, encodeQr, verifyReencode } from './qr.js';
+import { decodeWithVariants, encodeQr, verifyReencode } from './qr.js';
 import { renderFrame, FRAME_STYLES, DEFAULT_FRAME, QUIET_ZONE } from './frame.js';
 import { openCropper } from './cropper.js';
 import { openSheet, confirmSheet } from './sheet.js';
@@ -9,8 +9,58 @@ import { uid, loadImage, imageToImageData, pickFile, toast, canvasToBlob, downlo
 import { t } from './i18n.js';
 
 const CARD_PX = 1080;
+export const REGIONS = ['SG', 'MY', 'PH', 'ID', 'TW', 'HK', 'TH', 'JP'];
+const FLAGS = { SG: '🇸🇬', MY: '🇲🇾', PH: '🇵🇭', ID: '🇮🇩', TW: '🇹🇼', HK: '🇭🇰', TH: '🇹🇭', JP: '🇯🇵' };
+const SIZES = [100, 75, 50];
 
 // ---------- shared helpers ----------
+
+// small per-device preferences (localStorage may be unavailable → defaults)
+function pref(key, fallback = null) {
+  try {
+    return localStorage.getItem(`mz.${key}`) ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+function setPref(key, value) {
+  try {
+    localStorage.setItem(`mz.${key}`, value);
+  } catch { /* storage unavailable */ }
+}
+
+function defaultRegion() {
+  const saved = pref('region');
+  if (REGIONS.includes(saved)) return saved;
+  const fromLocale = (navigator.language.split('-')[1] || '').toUpperCase();
+  return REGIONS.includes(fromLocale) ? fromLocale : REGIONS[0];
+}
+const regionBadge = (r) => (r ? `${FLAGS[r] ?? ''} ${r}` : '');
+
+const qrSize = () => (SIZES.includes(+pref('qrSize')) ? +pref('qrSize') : 100);
+function applyQrSize(pct = qrSize()) {
+  document.documentElement.style.setProperty('--qr-scale', pct / 100);
+}
+applyQrSize();
+function cycleQrSize() {
+  const next = SIZES[(SIZES.indexOf(qrSize()) + 1) % SIZES.length];
+  setPref('qrSize', next);
+  applyQrSize(next);
+  return next;
+}
+
+/** Decode an image, retrying at several sizes and contrast variants. rect is in image pixels. */
+function decodeImage(img) {
+  for (const max of [1200, 800, 1600, 500]) {
+    const data = imageToImageData(img, max);
+    const hit = decodeWithVariants(data);
+    if (hit) {
+      const k = img.naturalWidth / data.width;
+      return { ...hit, rect: { x: hit.rect.x * k, y: hit.rect.y * k, w: hit.rect.w * k, h: hit.rect.h * k } };
+    }
+  }
+  return null;
+}
 
 const imgCache = new WeakMap();
 const imageOf = (blob) => {
@@ -80,11 +130,7 @@ async function importQr(kind, existing = null) {
   if (!file) return null;
   let full;
   try {
-    const img = await loadImage(file);
-    const data = imageToImageData(img);
-    const hit = decodeQr(data);
-    const k = img.naturalWidth / data.width;
-    full = hit ? { ...hit, rect: { x: hit.rect.x * k, y: hit.rect.y * k, w: hit.rect.w * k, h: hit.rect.h * k } } : null;
+    full = decodeImage(await loadImage(file));
   } catch {
     toast(t('qr.openFail'));
     return null;
@@ -98,7 +144,7 @@ async function importQr(kind, existing = null) {
   });
   if (!cropped) return null;
 
-  const fromCrop = decodeQr(imageToImageData(await loadImage(cropped)));
+  const fromCrop = decodeImage(await loadImage(cropped));
   const decoded = fromCrop ?? full;
   const redrawOk = decoded ? verifyReencode(decoded.bytes) : false;
 
@@ -106,6 +152,7 @@ async function importQr(kind, existing = null) {
     id: existing?.id ?? uid(),
     kind,
     label: existing?.label ?? '',
+    region: existing?.region ?? defaultRegion(),
     pokemonId: existing?.pokemonId ?? null,
     image: cropped,
     bytes: decoded?.bytes ?? null,
@@ -115,39 +162,43 @@ async function importQr(kind, existing = null) {
     createdAt: existing?.createdAt ?? Date.now(),
   };
 
-  if (kind === 'support' && !existing) {
-    const label = await askLabel(item);
-    if (label === null) return null;
-  }
+  if (!existing && !(await askDetails(item))) return null;
   await dbPut('qr', item);
   navigator.storage?.persist?.();
   toast(t(!decoded ? 'qr.readFail' : redrawOk ? 'qr.readOk' : 'qr.readNotExact'));
   return item;
 }
 
-function askLabel(item) {
+/** Name + region sheet. Resolves true when saved (item is updated in place). */
+function askDetails(item) {
   return new Promise((resolve) => {
     const s = openSheet(`
       <h3>${t(item.kind === 'trainer' ? 'label.trainer' : 'label.support')}</h3>
       <form class="form">
         <label>${t('label.name')}<input name="label" maxlength="40" placeholder="${t(item.kind === 'trainer' ? 'label.phTrainer' : 'label.phSupport')}"></label>
+        <label>${t('label.region')}<select name="region">${REGIONS.map((r) =>
+          `<option value="${r}">${regionBadge(r)}</option>`).join('')}</select></label>
         <div class="sheet-actions">
           <button type="button" class="btn ghost" data-close>${t('common.cancel')}</button>
           <button class="btn primary">${t('common.save')}</button>
         </div>
       </form>`);
     const input = s.el.querySelector('input');
+    const region = s.el.querySelector('select');
     input.value = item.label || '';
+    region.value = item.region || defaultRegion();
     if (item.kind === 'support') attachPokemonAutocomplete(input, (p) => (item.pokemonId = p.id));
     setTimeout(() => input.focus(), 50);
     let saved = false;
     s.el.querySelector('form').addEventListener('submit', (e) => {
       e.preventDefault();
       item.label = input.value.trim();
+      item.region = region.value;
+      setPref('region', region.value);
       saved = true;
       s.close();
     });
-    s.closed.then(() => resolve(saved ? item.label : null));
+    s.closed.then(() => resolve(saved));
   });
 }
 
@@ -165,6 +216,7 @@ function qrPanel(item, onChange) {
       <button class="btn primary big" data-act="scan">${t('qr.scan')}</button>
       <button class="btn" data-act="frame">${t('qr.frame')}</button>
       <button class="btn" data-act="toggle" ${item.bytes ? '' : 'disabled'}>${t(usesRedraw(item) ? 'qr.showOriginal' : 'qr.showRedraw')}</button>
+      <button class="btn" data-act="size">⤢ ${qrSize()}%</button>
       <button class="btn" data-act="png">${t('qr.png')}</button>
       <button class="btn" data-act="label">${t('qr.rename')}</button>
       <button class="btn" data-act="replace">${t('qr.replace')}</button>
@@ -178,6 +230,7 @@ function qrPanel(item, onChange) {
     const act = e.target.closest('[data-act]')?.dataset.act;
     if (!act) return;
     if (act === 'scan') openScan(item);
+    else if (act === 'size') e.target.closest('[data-act]').textContent = `⤢ ${cycleQrSize()}%`;
     else if (act === 'frame') {
       if (await openFrameEditor(item)) onChange();
     } else if (act === 'toggle') {
@@ -190,7 +243,7 @@ function qrPanel(item, onChange) {
       await drawCard(c, item);
       download(await canvasToBlob(c), `${(item.label || item.kind).replace(/[^\w-]+/g, '_')}.png`);
     } else if (act === 'label') {
-      if ((await askLabel(item)) !== null) {
+      if (await askDetails(item)) {
         await dbPut('qr', item);
         onChange();
       }
@@ -290,6 +343,7 @@ async function openScan(item) {
     <canvas></canvas>
     <p class="scan-label"></p>
     <div class="scan-bar">
+      <button class="btn" data-act="size">⤢ ${qrSize()}%</button>
       <button class="btn" data-act="mode">${t('scan.framed')}</button>
       <button class="btn primary" data-act="close">${t('common.done')}</button>
     </div>
@@ -318,7 +372,8 @@ async function openScan(item) {
       framed = !framed;
       e.target.textContent = t(framed ? 'scan.plain' : 'scan.framed');
       paint();
-    } else if (act === 'close') close();
+    } else if (act === 'size') e.target.textContent = `⤢ ${cycleQrSize()}%`;
+    else if (act === 'close') close();
   });
   await paint();
 }
@@ -326,8 +381,8 @@ async function openScan(item) {
 // ---------- screens ----------
 
 export async function renderTrainer(view) {
-  const items = (await dbAll('qr')).filter((q) => q.kind === 'trainer').sort((a, b) => b.createdAt - a.createdAt);
-  const item = items[0];
+  const items = (await dbAll('qr')).filter((q) => q.kind === 'trainer').sort((a, b) => a.createdAt - b.createdAt);
+  const item = items.find((q) => q.id === pref('trainer')) ?? items[0];
   view.innerHTML = `<h1 class="screen-title">${t('trainer.title')}</h1>`;
   if (!item) {
     view.insertAdjacentHTML('beforeend', `
@@ -338,21 +393,63 @@ export async function renderTrainer(view) {
         <p class="small">${t('trainer.privacy')} <a href="#settings">${t('trainer.how')}</a></p>
       </div>`);
     view.querySelector('[data-act=import]').addEventListener('click', async () => {
-      if (await importQr('trainer')) renderTrainer(view);
+      const added = await importQr('trainer');
+      if (added) {
+        setPref('trainer', added.id);
+        renderTrainer(view);
+      }
     });
     return;
   }
   view.append(qrPanel(item, () => renderTrainer(view)));
+
+  // all saved trainers: tap to switch, or add another
+  const strip = document.createElement('section');
+  strip.className = 'trainer-strip';
+  strip.innerHTML = `<h2>${t('trainer.mine')} <small>${items.length}</small></h2><div class="qr-grid small"></div>`;
+  const grid = strip.querySelector('.qr-grid');
+  for (const it of items) {
+    const b = document.createElement('button');
+    b.className = `qr-tile${it.id === item.id ? ' on' : ''}`;
+    b.setAttribute('aria-pressed', it.id === item.id);
+    b.innerHTML = `<canvas></canvas><span>${esc(it.label || t('trainer.unnamed'))}</span><small>${regionBadge(it.region)}</small>`;
+    drawCard(b.querySelector('canvas'), it, 360);
+    b.addEventListener('click', () => {
+      setPref('trainer', it.id);
+      renderTrainer(view);
+      view.scrollIntoView({ behavior: 'smooth' });
+    });
+    grid.append(b);
+  }
+  const add = document.createElement('button');
+  add.className = 'qr-tile add-tile';
+  add.innerHTML = `<span class="plus">＋</span><span>${t('trainer.add')}</span>`;
+  add.addEventListener('click', async () => {
+    const added = await importQr('trainer');
+    if (added) {
+      setPref('trainer', added.id);
+      renderTrainer(view);
+    }
+  });
+  grid.append(add);
+  view.append(strip);
 }
 
 export async function renderSupport(view) {
-  const items = (await dbAll('qr')).filter((q) => q.kind === 'support').sort((a, b) => b.createdAt - a.createdAt);
+  const all = (await dbAll('qr')).filter((q) => q.kind === 'support').sort((a, b) => b.createdAt - a.createdAt);
+  const present = REGIONS.filter((r) => all.some((q) => q.region === r));
+  const filter = present.includes(pref('supportRegion')) ? pref('supportRegion') : '';
+  const items = filter ? all.filter((q) => q.region === filter) : all;
   view.innerHTML = `
     <div class="screen-head">
-      <h1 class="screen-title">${t('support.title')} <small>${items.length || ''}</small></h1>
+      <h1 class="screen-title">${t('support.title')} <small>${all.length || ''}</small></h1>
       <button class="btn primary" data-act="add">${t('support.add')}</button>
     </div>
-    ${items.length ? '<div class="qr-grid"></div>' : `
+    ${present.length > 1 ? `<div class="chips region-chips">
+      <button class="chip ${filter ? '' : 'on'}" data-region="">${t('support.all')}</button>
+      ${present.map((r) => `<button class="chip ${filter === r ? 'on' : ''}" data-region="${r}">${regionBadge(r)}</button>`).join('')}
+    </div>` : ''}
+    ${all.length ? '<div class="qr-grid"></div>' : `
       <div class="empty">
         <div class="empty-art">⭐</div>
         <p>${t('support.empty')}</p>
@@ -360,11 +457,15 @@ export async function renderSupport(view) {
   view.querySelector('[data-act=add]').addEventListener('click', async () => {
     if (await importQr('support')) renderSupport(view);
   });
+  view.querySelectorAll('[data-region]').forEach((c) => c.addEventListener('click', () => {
+    setPref('supportRegion', c.dataset.region);
+    renderSupport(view);
+  }));
   const grid = view.querySelector('.qr-grid');
   for (const item of items) {
     const b = document.createElement('button');
     b.className = 'qr-tile';
-    b.innerHTML = `<canvas></canvas><span>${esc(item.label || t('support.title'))}</span>`;
+    b.innerHTML = `<canvas></canvas><span>${esc(item.label || t('support.title'))}</span><small>${regionBadge(item.region)}</small>`;
     drawCard(b.querySelector('canvas'), item, 480);
     b.addEventListener('click', () => openDetail(item, () => renderSupport(view)));
     grid.append(b);

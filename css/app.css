@@ -266,3 +266,21 @@ input[type=color] { width: 44px; height: 34px; border: 1px solid var(--line); bo
 .panel code { font-size: 12px; }
 .empty a { color: var(--yellow); }
 .tabbar b { font-weight: inherit; }
+
+/* ---------- multiple trainers, regions, QR size ---------- */
+:root { --qr-scale: 1; }
+.qr-panel > .card-canvas { max-width: calc(520px * var(--qr-scale)); width: calc(100% * var(--qr-scale)); }
+.scan canvas { width: calc(min(92vw, 70vh) * var(--qr-scale)); }
+.trainer-strip { max-width: 520px; margin: 28px auto 0; }
+.trainer-strip h2 { font-size: 16px; margin: 0 0 10px; }
+.trainer-strip h2 small { color: var(--muted); font-weight: 600; }
+.qr-grid.small { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; }
+.qr-tile small { color: var(--muted); font-weight: 600; font-size: 12px; margin-top: -4px; }
+.qr-tile.on { border-color: var(--yellow); box-shadow: 0 0 0 1px var(--yellow); }
+.add-tile { justify-content: center; align-items: center; min-height: 140px; border-style: dashed; color: var(--muted); }
+.add-tile .plus { font-size: 30px; line-height: 1; }
+.region-chips { margin: -4px 0 14px; }
+.form select {
+  width: 100%; padding: 11px 13px; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--surface); color: var(--text); font: inherit;
+}

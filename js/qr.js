@@ -17,6 +17,70 @@ export function decodeQr({ data, width, height }) {
   return { bytes: Array.from(r.binaryData), text: r.data, rect };
 }
 
+/** Grayscale copy with the darkest 1% → black and brightest 1% → white (fixes dim / washed-out photos). */
+export function stretchContrast({ data, width, height }) {
+  const n = width * height;
+  const gray = new Uint8ClampedArray(n);
+  const hist = new Uint32Array(256);
+  for (let i = 0, p = 0; i < n; i++, p += 4) {
+    const g = (data[p] * 299 + data[p + 1] * 587 + data[p + 2] * 114) / 1000;
+    gray[i] = g;
+    hist[gray[i]]++;
+  }
+  const cut = n * 0.01;
+  let lo = 0;
+  let hi = 255;
+  for (let acc = 0; lo < 255 && (acc += hist[lo]) < cut; lo++);
+  for (let acc = 0; hi > 0 && (acc += hist[hi]) < cut; hi--);
+  const range = Math.max(1, hi - lo);
+  const out = new Uint8ClampedArray(n * 4);
+  for (let i = 0, p = 0; i < n; i++, p += 4) {
+    out[p] = out[p + 1] = out[p + 2] = ((gray[i] - lo) * 255) / range;
+    out[p + 3] = 255;
+  }
+  return { data: out, width, height };
+}
+
+/** Global Otsu threshold → pure black/white (helps glare and uneven printing). */
+export function binarize({ data, width, height }) {
+  const n = width * height;
+  const gray = new Uint8Array(n);
+  const hist = new Float64Array(256);
+  for (let i = 0, p = 0; i < n; i++, p += 4) {
+    gray[i] = (data[p] * 299 + data[p + 1] * 587 + data[p + 2] * 114) / 1000;
+    hist[gray[i]]++;
+  }
+  let sum = 0;
+  for (let v = 0; v < 256; v++) sum += v * hist[v];
+  let sumB = 0;
+  let wB = 0;
+  let best = 0;
+  let threshold = 127;
+  for (let v = 0; v < 256; v++) {
+    wB += hist[v];
+    if (!wB) continue;
+    const wF = n - wB;
+    if (!wF) break;
+    sumB += v * hist[v];
+    const between = wB * wF * (sumB / wB - (sum - sumB) / wF) ** 2;
+    if (between > best) {
+      best = between;
+      threshold = v;
+    }
+  }
+  const out = new Uint8ClampedArray(n * 4);
+  for (let i = 0, p = 0; i < n; i++, p += 4) {
+    out[p] = out[p + 1] = out[p + 2] = gray[i] > threshold ? 255 : 0;
+    out[p + 3] = 255;
+  }
+  return { data: out, width, height };
+}
+
+/** Try the image as-is, then contrast-stretched, then binarized. */
+export function decodeWithVariants(imageData) {
+  return decodeQr(imageData) ?? decodeQr(stretchContrast(imageData)) ?? decodeQr(binarize(imageData));
+}
+
 /** True when re-encoding the bytes decodes back to exactly the same bytes. */
 export function verifyReencode(bytes) {
   try {

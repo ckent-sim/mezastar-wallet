@@ -19,7 +19,10 @@ function measure(qr, tags) {
   const textBytes = (obj) => new Blob([JSON.stringify(obj, (k, v) => (v instanceof Blob ? undefined : v))]).size;
   let prefs = 0;
   try {
-    prefs = (localStorage.getItem('mz.frame') ?? '').length + (localStorage.getItem('mz.lang') ?? '').length;
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k.startsWith('mz.')) prefs += k.length + (localStorage.getItem(k) ?? '').length;
+    }
   } catch { /* storage unavailable */ }
   return {
     tagPhotos: tags.reduce((n, t) => n + size(t.photo), 0),

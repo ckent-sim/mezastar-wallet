@@ -4,7 +4,7 @@ import { createRequire } from 'node:module';
 
 // vendor/jsQR.js is the same file as the npm dist; require the CJS copy in Node
 globalThis.jsQR = createRequire(import.meta.url)('jsqr');
-const { decodeQr, encodeQr, matrixToImageData, verifyReencode } = await import('../js/qr.js');
+const { decodeQr, encodeQr, matrixToImageData, verifyReencode, stretchContrast, binarize, decodeWithVariants } = await import('../js/qr.js');
 
 const roundTrip = (bytes) => decodeQr(matrixToImageData(encodeQr(bytes), 6, 4));
 
@@ -36,6 +36,40 @@ test('decode reports QR bounds', () => {
 test('verifyReencode', () => {
   assert.equal(verifyReencode([1, 2, 3, 250]), true);
   assert.equal(verifyReencode(new Array(4000).fill(7)), false); // too large for a QR
+});
+
+// A washed-out "photo": dark modules at gray 150, light at 175, with noise.
+function washedOut(bytes) {
+  const img = matrixToImageData(encodeQr(bytes), 6, 4);
+  let seed = 3;
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  for (let p = 0; p < img.data.length; p += 4) {
+    const v = (img.data[p] ? 175 : 150) + Math.round((rnd() - 0.5) * 16);
+    img.data[p] = img.data[p + 1] = img.data[p + 2] = v;
+  }
+  return img;
+}
+
+test('stretchContrast spans full range', () => {
+  const out = stretchContrast(washedOut([1, 2, 3]));
+  let lo = 255;
+  let hi = 0;
+  for (let p = 0; p < out.data.length; p += 4) {
+    lo = Math.min(lo, out.data[p]);
+    hi = Math.max(hi, out.data[p]);
+  }
+  assert.equal(lo, 0);
+  assert.equal(hi, 255);
+});
+
+test('binarize yields only black and white', () => {
+  const out = binarize(washedOut([1, 2, 3]));
+  for (let p = 0; p < out.data.length; p += 4) assert.ok(out.data[p] === 0 || out.data[p] === 255);
+});
+
+test('decodeWithVariants reads a washed-out photo', () => {
+  const bytes = [...Buffer.from('MZ-TRAINER-42'), 0xfe];
+  assert.deepEqual(decodeWithVariants(washedOut(bytes)).bytes, bytes);
 });
 
 test('blank image decodes to null', () => {
