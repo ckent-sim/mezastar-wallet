@@ -1,1 +1,156 @@
-{"source":"https://www.reddit.com/r/PokemonMEZASTAR/comments/1v0isl7/","entries":[]}
+{
+ "source": "https://www.reddit.com/r/PokemonMEZASTAR/comments/1v0isl7/",
+ "note": "EN support Pokémon tickets; QR payloads decoded from the posted images.",
+ "entries": [
+  {
+   "id": "en-blastoise",
+   "name": "Blastoise",
+   "dex": 9,
+   "art": 9,
+   "move": "Hydro Pump",
+   "type": "Water",
+   "regions": [
+    "SG",
+    "MY",
+    "PH",
+    "ID"
+   ],
+   "hex": "020979e895b782fdae4fabc751f74ea7504f4b454d4f4e3032dd"
+  },
+  {
+   "id": "en-mega-charizard-x",
+   "name": "Mega Charizard X",
+   "dex": 6,
+   "art": 10034,
+   "move": "Flamethrower",
+   "type": "Fire",
+   "regions": [
+    "SG",
+    "MY",
+    "PH",
+    "ID"
+   ],
+   "hex": "7eee57c1aede578308955d2caef6643d504f4b454d4f4e3032dd"
+  },
+  {
+   "id": "en-gengar",
+   "name": "Gengar",
+   "dex": 94,
+   "art": 94,
+   "move": "Shadow Ball",
+   "type": "Ghost",
+   "regions": [
+    "SG",
+    "MY",
+    "PH",
+    "ID"
+   ],
+   "hex": "a8f4f021304a4f507dbe49b1bd7ca3f2504f4b454d4f4e3032dd"
+  },
+  {
+   "id": "en-lapras",
+   "name": "Lapras",
+   "dex": 131,
+   "art": 131,
+   "move": "Ice Beam",
+   "type": "Ice",
+   "regions": [
+    "SG",
+    "MY",
+    "PH",
+    "ID"
+   ],
+   "hex": "3c447c874ac1d32309bea2bd7a934dd1504f4b454d4f4e3032dd"
+  },
+  {
+   "id": "en-mega-gardevoir",
+   "name": "Mega Gardevoir",
+   "dex": 282,
+   "art": 10051,
+   "move": "Psychic",
+   "type": "Psychic",
+   "regions": [
+    "SG",
+    "MY",
+    "PH",
+    "ID"
+   ],
+   "hex": "9bdfe292063e4c2a214aeca9e2024fb6504f4b454d4f4e3032dd"
+  },
+  {
+   "id": "en-lucario",
+   "name": "Lucario",
+   "dex": 448,
+   "art": 448,
+   "move": "Aura Sphere",
+   "type": "Fighting",
+   "regions": [
+    "SG",
+    "MY",
+    "PH",
+    "ID"
+   ],
+   "hex": "50ebbafe80906b3f28abf11c783574c9504f4b454d4f4e3032dd"
+  },
+  {
+   "id": "en-keldeo",
+   "name": "Keldeo",
+   "dex": 647,
+   "art": 647,
+   "move": "Sacred Sword",
+   "type": "Fighting",
+   "regions": [
+    "SG",
+    "MY",
+    "PH",
+    "ID"
+   ],
+   "hex": "8cb7d34056928580a126bb09bf37b117504f4b454d4f4e3032dd"
+  },
+  {
+   "id": "en-mimikyu",
+   "name": "Mimikyu",
+   "dex": 778,
+   "art": 778,
+   "move": "Shadow Claw",
+   "type": "Ghost",
+   "regions": [
+    "SG",
+    "MY",
+    "PH",
+    "ID"
+   ],
+   "hex": "16d7ff1c813cf704d35f91df0be709c5504f4b454d4f4e3032dd"
+  },
+  {
+   "id": "en-sirfetchd",
+   "name": "Sirfetch'd",
+   "dex": 865,
+   "art": 865,
+   "move": "Meteor Assault",
+   "type": "Fighting",
+   "regions": [
+    "SG",
+    "MY",
+    "PH",
+    "ID"
+   ],
+   "hex": "8da81090f283b09f0ad1dee07cb1b2a9504f4b454d4f4e3032dd"
+  },
+  {
+   "id": "en-duraludon",
+   "name": "Duraludon",
+   "dex": 884,
+   "art": 884,
+   "move": "Flash Cannon",
+   "type": "Steel",
+   "regions": [
+    "SG",
+    "MY",
+    "PH",
+    "ID"
+   ],
+   "hex": "c5acc8e7419f9e2fc60ba75911b7ef9c504f4b454d4f4e3032dd"
+  }
+ ]
+}

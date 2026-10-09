@@ -350,7 +350,7 @@ async function openScan(item) {
       <button class="btn primary" data-act="close">${t('common.done')}</button>
     </div>
     <p class="scan-hint">${t('scan.hint')}</p>`;
-  el.querySelector('.scan-label').textContent = item.label || titleOf(item);
+  el.querySelector('.scan-label').textContent = [item.label || titleOf(item), item.move].filter(Boolean).join(' · ');
   document.body.append(el);
   const canvas = el.querySelector('canvas');
   let framed = false;
@@ -446,6 +446,13 @@ const loadOfficial = () => (officialData ??= fetch(new URL('../data/support.json
 
 const SUPPORT_W = 1080;
 const SUPPORT_H = 1350;
+const TYPE_COLORS = {
+  Normal: '#9a9a7a', Fire: '#e8692c', Water: '#3b7be0', Grass: '#4fa83d', Electric: '#e0b414', Ice: '#3fb4c6',
+  Fighting: '#c22e28', Poison: '#9a3fa0', Ground: '#c9a043', Flying: '#8a72e0', Psychic: '#e8457a', Bug: '#8fa31a',
+  Rock: '#a8913a', Ghost: '#6a4f94', Dragon: '#5a38e8', Dark: '#5a4639', Steel: '#7f8aa6', Fairy: '#d6609c',
+};
+const hexToBytes = (hex) => (hex ? hex.match(/../g).map((h) => parseInt(h, 16)) : null);
+const entryRegions = (e, override) => (override?.region ? [override.region] : e.regions ?? (e.region ? [e.region] : []));
 
 /** Official entry merged with the user's override (a 'qr' item with officialId). */
 function effective(entry, override) {
@@ -454,12 +461,15 @@ function effective(entry, override) {
     kind: 'support',
     officialId: entry.id,
     label: override?.label || entry.name || '',
-    region: override?.region || entry.region,
+    region: override?.region || entryRegions(entry).join(' / '),
     dex: override?.pokemonId ?? entry.dex ?? null,
-    bytes: userQr ? override.bytes : entry.bytes ?? null,
+    art: override?.pokemonId ? override.pokemonId : entry.art ?? entry.dex ?? null,
+    move: override?.label && override.label !== entry.name ? '' : entry.move || '',
+    type: entry.type || '',
+    bytes: userQr ? override.bytes : hexToBytes(entry.hex),
     image: userQr ? override.image : null,
     showOriginal: userQr ? !!override.showOriginal : false,
-    frame: override?.frame,
+    frame: override?.frame ?? (entry.type ? { color: TYPE_COLORS[entry.type] ?? DEFAULT_FRAME.color, accent: '#ffcb05' } : undefined),
   };
 }
 
@@ -467,7 +477,7 @@ async function drawSupportCard(canvas, eff, scale = 1) {
   canvas.width = Math.round(SUPPORT_W * scale);
   canvas.height = Math.round(SUPPORT_H * scale);
   const [sprite, image] = await Promise.all([
-    eff.dex ? loadImage(spriteUrl(eff.dex)).catch(() => null) : null,
+    eff.art ? loadImage(spriteUrl(eff.art)).catch(() => null) : null,
     !usesRedraw(eff) && eff.image ? imageOf(eff.image) : null,
   ]);
   const ctx = canvas.getContext('2d');
@@ -477,7 +487,7 @@ async function drawSupportCard(canvas, eff, scale = 1) {
     image,
     sprite,
     name: eff.label || t('support.unknown'),
-    subtitle: [t('card.support'), eff.region].filter(Boolean).join(' · '),
+    subtitle: eff.move ? `${eff.move}${eff.type ? ` · ${eff.type}` : ''}` : [t('card.support'), eff.region].filter(Boolean).join(' · '),
     frame: eff.frame,
     missingText: t('support.missing'),
   });
@@ -488,7 +498,7 @@ function openOfficial(entry, override, refresh) {
   const host = s.el.querySelector('.detail');
   // override item to edit (created on first change)
   const ensureOverride = () => override ??= {
-    id: uid(), kind: 'support', officialId: entry.id, label: entry.name || '', region: entry.region,
+    id: uid(), kind: 'support', officialId: entry.id, label: entry.name || '', region: entryRegions(entry)[0] ?? defaultRegion(),
     pokemonId: entry.dex ?? null, image: null, bytes: null, text: null, showOriginal: false,
     frame: lastFrame(), createdAt: Date.now(),
   };
@@ -538,11 +548,11 @@ export async function renderSupport(view) {
   const [qrItems, official] = await Promise.all([dbAll('qr'), loadOfficial()]);
   const allMine = qrItems.filter((q) => q.kind === 'support' && !q.officialId).sort((a, b) => b.createdAt - a.createdAt);
   const overrides = new Map(qrItems.filter((q) => q.officialId).map((q) => [q.officialId, q]));
-  const regionOf = (e) => overrides.get(e.id)?.region || e.region;
-  const present = REGIONS.filter((r) => allMine.some((q) => q.region === r) || official.entries.some((e) => regionOf(e) === r));
+  const regionsOf = (e) => entryRegions(e, overrides.get(e.id));
+  const present = REGIONS.filter((r) => allMine.some((q) => q.region === r) || official.entries.some((e) => regionsOf(e).includes(r)));
   const filter = present.includes(pref('supportRegion')) ? pref('supportRegion') : '';
   const mine = filter ? allMine.filter((q) => q.region === filter) : allMine;
-  const entries = official.entries.filter((e) => !filter || regionOf(e) === filter);
+  const entries = official.entries.filter((e) => !filter || regionsOf(e).includes(filter));
 
   view.innerHTML = `
     <div class="screen-head">
