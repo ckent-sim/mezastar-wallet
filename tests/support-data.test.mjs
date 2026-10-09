@@ -18,6 +18,15 @@ test('support entries are well formed', () => {
   }
 });
 
+test('every bundled original QR crop exists and scans to its bytes', async () => {
+  const { PNG } = createRequire(import.meta.url)('pngjs');
+  for (const e of data.entries.filter((x) => x.img)) {
+    const png = PNG.sync.read(await readFile(new URL(`../${e.img}`, import.meta.url)));
+    const hit = globalThis.jsQR(new Uint8ClampedArray(png.data), png.width, png.height);
+    assert.equal(hit && Buffer.from(hit.binaryData).toString('hex'), e.hex, e.id);
+  }
+});
+
 test('every official QR redraws byte-for-byte', () => {
   for (const e of data.entries.filter((x) => x.hex)) {
     const bytes = e.hex.match(/../g).map((h) => parseInt(h, 16));

@@ -1,0 +1,13 @@
+{
+  "_comment": "Maps images in support-src/ (git-ignored) to entries in data/support.json. Run: node scripts/build-support.mjs",
+  "fey1bre7q4eh1.png": "en-blastoise",
+  "h36zt5z6q4eh1.png": "en-mega-charizard-x",
+  "gy34oa56q4eh1.jpg": "en-gengar",
+  "d1mdy3n5q4eh1.jpg": "en-lapras",
+  "onq1e596q4eh1.jpg": "en-mega-gardevoir",
+  "7yqi0ub5q4eh1.png": "en-lucario",
+  "1mzw3lf6q4eh1.png": "en-keldeo",
+  "o8rovd16q4eh1.jpg": "en-mimikyu",
+  "8ot17nt5q4eh1.jpg": "en-sirfetchd",
+  "37gwlrx5q4eh1.jpg": "en-duraludon"
+}

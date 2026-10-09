@@ -15,7 +15,8 @@
     "PH",
     "ID"
    ],
-   "hex": "020979e895b782fdae4fabc751f74ea7504f4b454d4f4e3032dd"
+   "hex": "020979e895b782fdae4fabc751f74ea7504f4b454d4f4e3032dd",
+   "img": "data/support-qr/en-blastoise.png"
   },
   {
    "id": "en-mega-charizard-x",
@@ -30,7 +31,8 @@
     "PH",
     "ID"
    ],
-   "hex": "7eee57c1aede578308955d2caef6643d504f4b454d4f4e3032dd"
+   "hex": "7eee57c1aede578308955d2caef6643d504f4b454d4f4e3032dd",
+   "img": "data/support-qr/en-mega-charizard-x.png"
   },
   {
    "id": "en-gengar",
@@ -45,7 +47,8 @@
     "PH",
     "ID"
    ],
-   "hex": "a8f4f021304a4f507dbe49b1bd7ca3f2504f4b454d4f4e3032dd"
+   "hex": "a8f4f021304a4f507dbe49b1bd7ca3f2504f4b454d4f4e3032dd",
+   "img": "data/support-qr/en-gengar.png"
   },
   {
    "id": "en-lapras",
@@ -60,7 +63,8 @@
     "PH",
     "ID"
    ],
-   "hex": "3c447c874ac1d32309bea2bd7a934dd1504f4b454d4f4e3032dd"
+   "hex": "3c447c874ac1d32309bea2bd7a934dd1504f4b454d4f4e3032dd",
+   "img": "data/support-qr/en-lapras.png"
   },
   {
    "id": "en-mega-gardevoir",
@@ -75,7 +79,8 @@
     "PH",
     "ID"
    ],
-   "hex": "9bdfe292063e4c2a214aeca9e2024fb6504f4b454d4f4e3032dd"
+   "hex": "9bdfe292063e4c2a214aeca9e2024fb6504f4b454d4f4e3032dd",
+   "img": "data/support-qr/en-mega-gardevoir.png"
   },
   {
    "id": "en-lucario",
@@ -90,7 +95,8 @@
     "PH",
     "ID"
    ],
-   "hex": "50ebbafe80906b3f28abf11c783574c9504f4b454d4f4e3032dd"
+   "hex": "50ebbafe80906b3f28abf11c783574c9504f4b454d4f4e3032dd",
+   "img": "data/support-qr/en-lucario.png"
   },
   {
    "id": "en-keldeo",
@@ -105,7 +111,8 @@
     "PH",
     "ID"
    ],
-   "hex": "8cb7d34056928580a126bb09bf37b117504f4b454d4f4e3032dd"
+   "hex": "8cb7d34056928580a126bb09bf37b117504f4b454d4f4e3032dd",
+   "img": "data/support-qr/en-keldeo.png"
   },
   {
    "id": "en-mimikyu",
@@ -120,7 +127,8 @@
     "PH",
     "ID"
    ],
-   "hex": "16d7ff1c813cf704d35f91df0be709c5504f4b454d4f4e3032dd"
+   "hex": "16d7ff1c813cf704d35f91df0be709c5504f4b454d4f4e3032dd",
+   "img": "data/support-qr/en-mimikyu.png"
   },
   {
    "id": "en-sirfetchd",
@@ -135,7 +143,8 @@
     "PH",
     "ID"
    ],
-   "hex": "8da81090f283b09f0ad1dee07cb1b2a9504f4b454d4f4e3032dd"
+   "hex": "8da81090f283b09f0ad1dee07cb1b2a9504f4b454d4f4e3032dd",
+   "img": "data/support-qr/en-sirfetchd.png"
   },
   {
    "id": "en-duraludon",
@@ -150,7 +159,8 @@
     "PH",
     "ID"
    ],
-   "hex": "c5acc8e7419f9e2fc60ba75911b7ef9c504f4b454d4f4e3032dd"
+   "hex": "c5acc8e7419f9e2fc60ba75911b7ef9c504f4b454d4f4e3032dd",
+   "img": "data/support-qr/en-duraludon.png"
   }
  ]
 }

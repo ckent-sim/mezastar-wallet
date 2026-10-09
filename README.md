@@ -31,6 +31,7 @@ The service worker is network-first for app files, so new deploys show up on the
 ## Regenerating data
 
 - `node scripts/build-tags.mjs`: refreshes `data/tags.json` from the official SG tag pages (run when a new version releases). Only text is stored; images stay on the official server.
+- `node scripts/build-support.mjs`: crops the original QR square from each support ticket in `support-src/` (git-ignored; map files to entries in `scripts/support-sources.json`) into `data/support-qr/`, and fills in the decoded bytes. Each official card can toggle between the redrawn QR and this original.
 - `node scripts/build-pokemon.mjs`: refreshes `data/pokemon.json` from PokéAPI's CSV.
 - `node scripts/make-icons.mjs`: regenerates the app icons.
 

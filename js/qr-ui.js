@@ -63,10 +63,12 @@ function decodeImage(img) {
   return null;
 }
 
-const imgCache = new WeakMap();
-const imageOf = (blob) => {
-  if (!imgCache.has(blob)) imgCache.set(blob, loadImage(blob));
-  return imgCache.get(blob);
+const imgCache = new WeakMap(); // Blob → Promise<img>
+const urlCache = new Map(); // bundled image path → Promise<img>
+const imageOf = (src) => {
+  const cache = src instanceof Blob ? imgCache : urlCache;
+  if (!cache.has(src)) cache.set(src, loadImage(src));
+  return cache.get(src);
 };
 
 function lastFrame() {
@@ -467,8 +469,9 @@ function effective(entry, override) {
     move: override?.label && override.label !== entry.name ? '' : entry.move || '',
     type: entry.type || '',
     bytes: userQr ? override.bytes : hexToBytes(entry.hex),
-    image: userQr ? override.image : null,
-    showOriginal: userQr ? !!override.showOriginal : false,
+    // official entries ship the original ticket QR (entry.img) next to the decoded bytes
+    image: userQr ? override.image : entry.img ? new URL(`../${entry.img}`, import.meta.url).href : null,
+    showOriginal: !!override?.showOriginal,
     frame: override?.frame ?? (entry.type ? { color: TYPE_COLORS[entry.type] ?? DEFAULT_FRAME.color, accent: '#ffcb05' } : undefined),
   };
 }
@@ -505,12 +508,18 @@ function openOfficial(entry, override, refresh) {
   const mount = () => {
     const eff = effective(entry, override);
     const hasQr = !!(eff.bytes || eff.image);
+    const canToggle = !!(eff.bytes && eff.image);
     host.innerHTML = `
       <canvas class="support-canvas" aria-label="${esc(eff.label)}"></canvas>
+      ${hasQr ? `<div class="status-line">${usesRedraw(eff)
+        ? `<span class="ok">${t('qr.redrawn')}</span>`
+        : `<span class="warn">${t('qr.original')}</span>`}</div>` : ''}
       <div class="actions">
         <button class="btn primary big" data-act="scan" ${hasQr ? '' : 'disabled'}>${t('support.enlarge')}</button>
         <button class="btn" data-act="qr">${t(hasQr ? 'qr.replace' : 'support.addQr')}</button>
         <button class="btn" data-act="label">${t('qr.rename')}</button>
+        ${canToggle ? `<button class="btn" data-act="toggle">${t(usesRedraw(eff) ? 'qr.showOriginal' : 'qr.showRedraw')}</button>` : ''}
+        <button class="btn" data-act="size">⤢ ${qrSize()}%</button>
         <button class="btn" data-act="png" ${hasQr ? '' : 'disabled'}>${t('qr.png')}</button>
         ${override ? `<button class="btn ghost" data-act="reset">${t('support.reset')}</button>` : ''}
       </div>`;
@@ -521,8 +530,15 @@ function openOfficial(entry, override, refresh) {
     const act = e.target.closest('[data-act]')?.dataset.act;
     if (!act) return;
     const eff = effective(entry, override);
-    if (act === 'scan') openScan(eff);
-    else if (act === 'qr') {
+    if (act === 'scan') return openScan(eff);
+    if (act === 'size') {
+      e.target.closest('[data-act]').textContent = `⤢ ${cycleQrSize()}%`;
+      return;
+    }
+    if (act === 'toggle') {
+      ensureOverride().showOriginal = !eff.showOriginal;
+      await dbPut('qr', override);
+    } else if (act === 'qr') {
       const saved = await importQr('support', ensureOverride());
       if (saved) override = saved;
     } else if (act === 'label') {
