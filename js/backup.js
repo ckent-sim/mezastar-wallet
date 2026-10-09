@@ -24,13 +24,14 @@ function mapDataUrls(value, fn) {
   return value;
 }
 
-export async function serializeBackup({ qr, tags }, blobToDataUrl) {
+export async function serializeBackup({ qr, tags, owned = [] }, blobToDataUrl) {
   return {
     app: APP,
     version: VERSION,
     exportedAt: new Date().toISOString(),
     qr: await mapBlobs(qr, blobToDataUrl),
     tags: await mapBlobs(tags, blobToDataUrl),
+    owned,
   };
 }
 
@@ -43,5 +44,6 @@ export function parseBackup(obj, dataUrlToBlob) {
   return {
     qr: mapDataUrls(obj.qr.filter(valid), dataUrlToBlob),
     tags: mapDataUrls(obj.tags.filter(valid), dataUrlToBlob),
+    owned: Array.isArray(obj.owned) ? obj.owned.filter(valid) : [], // added after v1; optional
   };
 }

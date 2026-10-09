@@ -1,10 +1,10 @@
 // Entry: hash router + service worker registration.
 import { renderTrainer, renderSupport } from './qr-ui.js';
-import { renderTags } from './tags-ui.js';
+import { renderTagsTab } from './tags-ui.js';
 import { renderSettings } from './settings-ui.js';
 import { t, getLang } from './i18n.js';
 
-const routes = { trainer: renderTrainer, tags: renderTags, support: renderSupport, settings: renderSettings };
+const routes = { trainer: renderTrainer, tags: renderTagsTab, support: renderSupport, settings: renderSettings };
 const view = document.getElementById('view');
 
 async function route() {

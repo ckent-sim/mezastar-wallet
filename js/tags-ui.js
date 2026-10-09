@@ -6,6 +6,7 @@ import { attachPokemonAutocomplete } from './autocomplete.js';
 import { spriteUrl } from './pokemon.js';
 import { uid, pickFile, toast, esc } from './util.js';
 import { t } from './i18n.js';
+import { renderCatalog } from './catalog-ui.js';
 
 let urls = [];
 const objUrl = (blob) => {
@@ -158,4 +159,27 @@ function editTag(existing) {
       resolve(saved);
     });
   });
+}
+
+// Tags tab: segmented switch between the official catalog and the user's own tag photos.
+export async function renderTagsTab(view) {
+  let mode = 'catalog';
+  try {
+    mode = localStorage.getItem('mz.tagsView') === 'photos' ? 'photos' : 'catalog';
+  } catch { /* storage unavailable */ }
+  view.innerHTML = `
+    <div class="segmented" role="tablist">
+      <button role="tab" data-mode="catalog" aria-selected="${mode === 'catalog'}">${t('tags.catalog')}</button>
+      <button role="tab" data-mode="photos" aria-selected="${mode === 'photos'}">${t('tags.photos')}</button>
+    </div>
+    <div class="tab-host"></div>`;
+  view.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', () => {
+    try {
+      localStorage.setItem('mz.tagsView', b.dataset.mode);
+    } catch { /* storage unavailable */ }
+    renderTagsTab(view);
+  }));
+  const host = view.querySelector('.tab-host');
+  if (mode === 'catalog') await renderCatalog(host);
+  else await renderTags(host);
 }

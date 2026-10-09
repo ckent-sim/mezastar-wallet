@@ -16,6 +16,7 @@ const sample = () => ({
     createdAt: 1,
   }],
   tags: [{ id: 't1', name: 'Pikachu', pokemonId: 25, photo: null, note: 'n', favorite: true, createdAt: 2 }],
+  owned: [{ id: '2-3-001', at: 3 }],
 });
 
 test('round trip preserves records and blob bytes', async () => {
@@ -28,6 +29,13 @@ test('round trip preserves records and blob bytes', async () => {
   assert.equal(qr[0].frame.background.type, 'image/jpeg');
   assert.equal(qr[0].frame.style, 'star');
   assert.deepEqual(tags[0], sample().tags[0]);
+  assert.deepEqual(parseBackup(json, toBlob).owned, [{ id: '2-3-001', at: 3 }]);
+});
+
+test('older backups without owned still import', async () => {
+  const json = JSON.parse(JSON.stringify(await serializeBackup({ qr: [], tags: [] }, toUrl)));
+  delete json.owned;
+  assert.deepEqual(parseBackup(json, toBlob).owned, []);
 });
 
 test('serialize does not mutate input', async () => {

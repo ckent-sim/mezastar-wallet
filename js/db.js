@@ -1,7 +1,7 @@
-// Minimal IndexedDB wrapper. Stores: 'qr' and 'tags', keyPath 'id'.
+// Minimal IndexedDB wrapper. Stores: 'qr', 'tags' (own photos), 'owned' (catalog tag numbers); keyPath 'id'.
 
 const DB_NAME = 'mezastar-wallet';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 let dbPromise;
 
 function open() {
@@ -9,7 +9,7 @@ function open() {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
     req.onupgradeneeded = () => {
       const db = req.result;
-      for (const name of ['qr', 'tags']) {
+      for (const name of ['qr', 'tags', 'owned']) {
         if (!db.objectStoreNames.contains(name)) db.createObjectStore(name, { keyPath: 'id' });
       }
     };

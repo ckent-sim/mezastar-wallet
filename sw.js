@@ -1,5 +1,5 @@
 // Offline service worker: precached app shell (cache-first) + runtime cache for sprites.
-const VERSION = 'v2';
+const VERSION = 'v3';
 const SHELL = `mz-shell-${VERSION}`;
 const RUNTIME = 'mz-sprites';
 const ASSETS = [
@@ -10,6 +10,7 @@ const ASSETS = [
   'js/app.js',
   'js/autocomplete.js',
   'js/backup.js',
+  'js/catalog-ui.js',
   'js/cropper.js',
   'js/db.js',
   'js/frame.js',
@@ -24,6 +25,7 @@ const ASSETS = [
   'vendor/jsQR.js',
   'vendor/qrcode.mjs',
   'data/pokemon.json',
+  'data/tags.json',
   'icons/icon.svg',
   'icons/icon-192.png',
   'icons/icon-512.png',

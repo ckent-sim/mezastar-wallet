@@ -19,7 +19,7 @@ export function searchPokemon(list, query, limit = 8) {
   const prefix = [];
   const contains = [];
   for (const p of list) {
-    const names = [p.en, p.ja, p.zh].filter(Boolean).map(fold);
+    const names = [p.en, p.ja, p.zh, p.zhHant].filter(Boolean).map(fold);
     if (names.some((n) => n.startsWith(q))) prefix.push(p);
     else if (names.some((n) => n.includes(q))) contains.push(p);
     if (prefix.length >= limit) break;

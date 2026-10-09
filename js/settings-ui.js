@@ -14,7 +14,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
 const fmt = (n) => (n >= 1e9 ? `${(n / 1e9).toFixed(1)} GB` : n >= 1e6 ? `${(n / 1e6).toFixed(1)} MB` : n >= 1e3 ? `${Math.round(n / 1e3)} KB` : `${n} B`);
 
 /** Exact bytes of what the app stores, by category. */
-function measure(qr, tags) {
+function measure(qr, tags, owned) {
   const size = (b) => (b instanceof Blob ? b.size : 0);
   const textBytes = (obj) => new Blob([JSON.stringify(obj, (k, v) => (v instanceof Blob ? undefined : v))]).size;
   let prefs = 0;
@@ -28,18 +28,18 @@ function measure(qr, tags) {
     tagPhotos: tags.reduce((n, t) => n + size(t.photo), 0),
     qrImages: qr.reduce((n, q) => n + size(q.image), 0),
     backgrounds: qr.reduce((n, q) => n + size(q.frame?.background), 0),
-    text: textBytes(qr) + textBytes(tags) + prefs,
+    text: textBytes(qr) + textBytes(tags) + textBytes(owned) + prefs,
   };
 }
 
 export async function renderSettings(view) {
-  const [qr, tags] = await Promise.all([dbAll('qr'), dbAll('tags')]);
+  const [qr, tags, owned] = await Promise.all([dbAll('qr'), dbAll('tags'), dbAll('owned')]);
   const est = await navigator.storage?.estimate?.().catch(() => null);
   const persisted = await navigator.storage?.persisted?.().catch(() => false);
   const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
   const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
 
-  const bytes = measure(qr, tags);
+  const bytes = measure(qr, tags, owned);
   const dataTotal = bytes.tagPhotos + bytes.qrImages + bytes.backgrounds + bytes.text;
 
   view.innerHTML = `
@@ -63,7 +63,8 @@ export async function renderSettings(view) {
     <section class="panel">
       <h2>${t('settings.dataTitle')}</h2>
       <p class="muted">${t(qr.some((q) => q.kind === 'trainer') ? 'settings.hasTrainer' : 'settings.noTrainer')}
-        · ${t('settings.counts', { tags: tags.length, support: qr.filter((q) => q.kind === 'support').length })}</p>
+        · ${t('settings.counts', { tags: tags.length, support: qr.filter((q) => q.kind === 'support').length })}
+        · ${t('settings.ownedCount', { n: owned.length })}</p>
       <p class="muted">${t('settings.dataNote')}</p>
       <div class="row wrap">
         <button class="btn primary" data-act="export">${t('settings.export')}</button>
@@ -106,7 +107,7 @@ export async function renderSettings(view) {
     if (code) return setLang(code); // app re-renders on 'langchange'
     const act = e.target.closest('[data-act]')?.dataset.act;
     if (act === 'export') {
-      const data = await serializeBackup({ qr, tags }, blobToDataUrl);
+      const data = await serializeBackup({ qr, tags, owned }, blobToDataUrl);
       const stamp = new Date().toISOString().slice(0, 10);
       download(new Blob([JSON.stringify(data)], { type: 'application/json' }), `mezastar-wallet-${stamp}.json`);
     } else if (act === 'import') {
@@ -116,6 +117,7 @@ export async function renderSettings(view) {
         const parsed = parseBackup(JSON.parse(await file.text()), dataUrlToBlob);
         for (const r of parsed.qr) await dbPut('qr', r);
         for (const r of parsed.tags) await dbPut('tags', r);
+        for (const r of parsed.owned) await dbPut('owned', r);
         toast(t('settings.imported', { qr: parsed.qr.length, tags: parsed.tags.length }));
         renderSettings(view);
       } catch (err) {
@@ -134,6 +136,7 @@ export async function renderSettings(view) {
       if (await confirmSheet(t('settings.wipeConfirm'), { ok: t('settings.wipeOk') })) {
         await dbClear('qr');
         await dbClear('tags');
+        await dbClear('owned');
         toast(t('settings.wiped'));
         renderSettings(view);
       }
