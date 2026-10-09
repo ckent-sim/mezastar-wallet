@@ -322,3 +322,12 @@ input[type=color] { width: 44px; height: 34px; border: 1px solid var(--line); bo
 .cat-card:not(.owned) .cat-img img { filter: saturate(.55) brightness(.8); }
 .bulk { justify-content: center; margin: 16px 0 6px; }
 .source a { color: var(--yellow); }
+
+/* ---------- official support cards ---------- */
+.section-title { font-size: 16px; margin: 18px 0 6px; }
+.section-title small { color: var(--muted); font-weight: 600; }
+.support-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin: 8px 0 8px; }
+.support-tile { padding: 0; border: 0; background: none; cursor: pointer; border-radius: 14px; }
+.support-tile canvas { display: block; width: 100%; aspect-ratio: 1080 / 1350; border-radius: 14px; box-shadow: 0 6px 18px rgba(0,0,0,.35); }
+.support-tile:focus-visible { outline: 2px solid var(--yellow); outline-offset: 3px; }
+.support-canvas { display: block; width: 100%; max-width: 420px; margin: 0 auto 14px; aspect-ratio: 1080 / 1350; border-radius: 18px; }

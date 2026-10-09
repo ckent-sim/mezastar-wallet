@@ -62,6 +62,103 @@ export function renderFrame(ctx, W, { matrix = null, image = null, frame = DEFAU
   ctx.restore();
 }
 
+// ---------- support Pokémon card (portrait: artwork + name on top, big QR below) ----------
+
+export function supportLayout(W, H, moduleCount) {
+  const header = { h: Math.round(H * 0.22) };
+  const span = moduleCount + QUIET_ZONE * 2;
+  const avail = Math.min(W * 0.9, H - header.h - W * 0.05);
+  const module = Math.max(1, Math.floor(avail / span));
+  const size = module * span;
+  const x = Math.floor((W - size) / 2);
+  const y = header.h + Math.floor((H - header.h - size) / 2);
+  return { header, panel: { x, y, size }, qr: { x: x + QUIET_ZONE * module, y: y + QUIET_ZONE * module, size: module * moduleCount, module } };
+}
+
+/**
+ * @param {{matrix?, image?, sprite?, name, subtitle, frame?, missingText?}} opts
+ * matrix → redrawn QR; image → original photo; neither → dashed "missing" slot.
+ */
+export function renderSupportCard(ctx, W, H, { matrix = null, image = null, sprite = null, name = '', subtitle = '', frame = DEFAULT_FRAME, missingText = '' }) {
+  const f = { ...DEFAULT_FRAME, ...frame };
+  const { header, panel, qr } = supportLayout(W, H, matrix ? matrix.size : IMAGE_ONLY_MODULES);
+  ctx.save();
+  ctx.clearRect(0, 0, W, H);
+
+  // background
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, shade(f.color, -0.1));
+  g.addColorStop(1, shade(f.color, -0.55));
+  ctx.fillStyle = g;
+  roundRect(ctx, 0, 0, W, H, W * 0.06);
+  ctx.fill();
+  ctx.strokeStyle = f.accent;
+  ctx.lineWidth = W * 0.012;
+  roundRect(ctx, W * 0.02, W * 0.02, W * 0.96, H - W * 0.04, W * 0.05);
+  ctx.stroke();
+
+  // artwork bubble
+  const r = header.h * 0.42;
+  const cx = W * 0.06 + r;
+  const cy = header.h * 0.56;
+  ctx.fillStyle = 'rgba(255,255,255,.92)';
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.lineWidth = W * 0.01;
+  ctx.strokeStyle = f.accent;
+  ctx.stroke();
+  if (sprite) drawContain(ctx, sprite, cx - r * 0.95, cy - r * 0.95, r * 1.9);
+  else {
+    ctx.fillStyle = '#9a9ab0';
+    ctx.font = `800 ${Math.round(r)}px system-ui, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('?', cx, cy);
+  }
+
+  // name + subtitle
+  const tx = cx + r + W * 0.04;
+  const maxW = W - tx - W * 0.06;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = '#fff';
+  ctx.font = `800 ${Math.round(W * 0.075)}px system-ui, "Segoe UI", sans-serif`;
+  ctx.fillText(name, tx, cy + W * 0.005, maxW);
+  ctx.fillStyle = f.accent;
+  ctx.font = `700 ${Math.round(W * 0.036)}px system-ui, "Segoe UI", sans-serif`;
+  ctx.fillText(subtitle, tx, cy + W * 0.06, maxW);
+
+  // QR panel
+  ctx.fillStyle = '#fff';
+  roundRect(ctx, panel.x, panel.y, panel.size, panel.size, qr.module * 2);
+  ctx.fill();
+  if (matrix) {
+    ctx.fillStyle = '#000';
+    for (let row = 0; row < matrix.size; row++) {
+      for (let col = 0; col < matrix.size; col++) {
+        if (matrix.isDark(row, col)) ctx.fillRect(qr.x + col * qr.module, qr.y + row * qr.module, qr.module, qr.module);
+      }
+    }
+  } else if (image) {
+    const inset = qr.module * 1.5;
+    drawContain(ctx, image, panel.x + inset, panel.y + inset, panel.size - inset * 2);
+  } else {
+    ctx.setLineDash([W * 0.02, W * 0.015]);
+    ctx.strokeStyle = '#b8b8c8';
+    ctx.lineWidth = W * 0.006;
+    roundRect(ctx, panel.x + W * 0.04, panel.y + W * 0.04, panel.size - W * 0.08, panel.size - W * 0.08, W * 0.03);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#8a8aa0';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `700 ${Math.round(W * 0.045)}px system-ui, sans-serif`;
+    ctx.fillText(missingText, W / 2, panel.y + panel.size / 2, panel.size * 0.8);
+  }
+  ctx.restore();
+}
+
 // ---------- styles ----------
 
 const baseFill = {

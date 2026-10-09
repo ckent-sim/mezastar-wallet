@@ -1,7 +1,8 @@
 // E-TrainerID + Support QR screens: import → crop → decode, framed card, frame editor, scan mode.
 import { dbAll, dbPut, dbDelete } from './db.js';
 import { decodeWithVariants, encodeQr, verifyReencode } from './qr.js';
-import { renderFrame, FRAME_STYLES, DEFAULT_FRAME, QUIET_ZONE } from './frame.js';
+import { renderFrame, renderSupportCard, FRAME_STYLES, DEFAULT_FRAME, QUIET_ZONE } from './frame.js';
+import { spriteUrl } from './pokemon.js';
 import { openCropper } from './cropper.js';
 import { openSheet, confirmSheet } from './sheet.js';
 import { attachPokemonAutocomplete } from './autocomplete.js';
@@ -153,6 +154,7 @@ async function importQr(kind, existing = null) {
     kind,
     label: existing?.label ?? '',
     region: existing?.region ?? defaultRegion(),
+    officialId: existing?.officialId ?? null,
     pokemonId: existing?.pokemonId ?? null,
     image: cropped,
     bytes: decoded?.bytes ?? null,
@@ -435,21 +437,128 @@ export async function renderTrainer(view) {
   view.append(strip);
 }
 
+// ---------- official support Pokémon (data/support.json) ----------
+
+let officialData;
+const loadOfficial = () => (officialData ??= fetch(new URL('../data/support.json', import.meta.url))
+  .then((r) => r.json())
+  .catch(() => ({ entries: [] })));
+
+const SUPPORT_W = 1080;
+const SUPPORT_H = 1350;
+
+/** Official entry merged with the user's override (a 'qr' item with officialId). */
+function effective(entry, override) {
+  const userQr = override && (override.bytes || override.image);
+  return {
+    kind: 'support',
+    officialId: entry.id,
+    label: override?.label || entry.name || '',
+    region: override?.region || entry.region,
+    dex: override?.pokemonId ?? entry.dex ?? null,
+    bytes: userQr ? override.bytes : entry.bytes ?? null,
+    image: userQr ? override.image : null,
+    showOriginal: userQr ? !!override.showOriginal : false,
+    frame: override?.frame,
+  };
+}
+
+async function drawSupportCard(canvas, eff, scale = 1) {
+  canvas.width = Math.round(SUPPORT_W * scale);
+  canvas.height = Math.round(SUPPORT_H * scale);
+  const [sprite, image] = await Promise.all([
+    eff.dex ? loadImage(spriteUrl(eff.dex)).catch(() => null) : null,
+    !usesRedraw(eff) && eff.image ? imageOf(eff.image) : null,
+  ]);
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(scale, 0, 0, scale, 0, 0);
+  renderSupportCard(ctx, SUPPORT_W, SUPPORT_H, {
+    matrix: usesRedraw(eff) ? encodeQr(eff.bytes) : null,
+    image,
+    sprite,
+    name: eff.label || t('support.unknown'),
+    subtitle: [t('card.support'), eff.region].filter(Boolean).join(' · '),
+    frame: eff.frame,
+    missingText: t('support.missing'),
+  });
+}
+
+function openOfficial(entry, override, refresh) {
+  const s = openSheet(`<button class="sheet-x" data-close aria-label="${t('common.close')}">✕</button><div class="detail"></div>`, { wide: true });
+  const host = s.el.querySelector('.detail');
+  // override item to edit (created on first change)
+  const ensureOverride = () => override ??= {
+    id: uid(), kind: 'support', officialId: entry.id, label: entry.name || '', region: entry.region,
+    pokemonId: entry.dex ?? null, image: null, bytes: null, text: null, showOriginal: false,
+    frame: lastFrame(), createdAt: Date.now(),
+  };
+  const mount = () => {
+    const eff = effective(entry, override);
+    const hasQr = !!(eff.bytes || eff.image);
+    host.innerHTML = `
+      <canvas class="support-canvas" aria-label="${esc(eff.label)}"></canvas>
+      <div class="actions">
+        <button class="btn primary big" data-act="scan" ${hasQr ? '' : 'disabled'}>${t('support.enlarge')}</button>
+        <button class="btn" data-act="qr">${t(hasQr ? 'qr.replace' : 'support.addQr')}</button>
+        <button class="btn" data-act="label">${t('qr.rename')}</button>
+        <button class="btn" data-act="png" ${hasQr ? '' : 'disabled'}>${t('qr.png')}</button>
+        ${override ? `<button class="btn ghost" data-act="reset">${t('support.reset')}</button>` : ''}
+      </div>`;
+    drawSupportCard(host.querySelector('canvas'), eff);
+  };
+  mount();
+  host.onclick = async (e) => {
+    const act = e.target.closest('[data-act]')?.dataset.act;
+    if (!act) return;
+    const eff = effective(entry, override);
+    if (act === 'scan') openScan(eff);
+    else if (act === 'qr') {
+      const saved = await importQr('support', ensureOverride());
+      if (saved) override = saved;
+    } else if (act === 'label') {
+      if (await askDetails(ensureOverride())) {
+        if (override.pokemonId == null) override.pokemonId = entry.dex ?? null;
+        await dbPut('qr', override);
+      }
+    } else if (act === 'png') {
+      const c = document.createElement('canvas');
+      await drawSupportCard(c, eff);
+      download(await canvasToBlob(c), `${(eff.label || 'support').replace(/[^\w-]+/g, '_')}.png`);
+    } else if (act === 'reset') {
+      if (!(await confirmSheet(t('support.resetConfirm'), { ok: t('support.reset') }))) return;
+      await dbDelete('qr', override.id);
+      override = null;
+    }
+    mount();
+    refresh();
+  };
+}
+
 export async function renderSupport(view) {
-  const all = (await dbAll('qr')).filter((q) => q.kind === 'support').sort((a, b) => b.createdAt - a.createdAt);
-  const present = REGIONS.filter((r) => all.some((q) => q.region === r));
+  const [qrItems, official] = await Promise.all([dbAll('qr'), loadOfficial()]);
+  const allMine = qrItems.filter((q) => q.kind === 'support' && !q.officialId).sort((a, b) => b.createdAt - a.createdAt);
+  const overrides = new Map(qrItems.filter((q) => q.officialId).map((q) => [q.officialId, q]));
+  const regionOf = (e) => overrides.get(e.id)?.region || e.region;
+  const present = REGIONS.filter((r) => allMine.some((q) => q.region === r) || official.entries.some((e) => regionOf(e) === r));
   const filter = present.includes(pref('supportRegion')) ? pref('supportRegion') : '';
-  const items = filter ? all.filter((q) => q.region === filter) : all;
+  const mine = filter ? allMine.filter((q) => q.region === filter) : allMine;
+  const entries = official.entries.filter((e) => !filter || regionOf(e) === filter);
+
   view.innerHTML = `
     <div class="screen-head">
-      <h1 class="screen-title">${t('support.title')} <small>${all.length || ''}</small></h1>
+      <h1 class="screen-title">${t('support.title')}</h1>
       <button class="btn primary" data-act="add">${t('support.add')}</button>
     </div>
     ${present.length > 1 ? `<div class="chips region-chips">
       <button class="chip ${filter ? '' : 'on'}" data-region="">${t('support.all')}</button>
       ${present.map((r) => `<button class="chip ${filter === r ? 'on' : ''}" data-region="${r}">${regionBadge(r)}</button>`).join('')}
     </div>` : ''}
-    ${all.length ? '<div class="qr-grid"></div>' : `
+    ${entries.length ? `
+      <h2 class="section-title">${t('support.official')} <small>${entries.length}</small></h2>
+      <p class="muted small">${t('support.officialNote')}</p>
+      <div class="support-grid official"></div>` : ''}
+    <h2 class="section-title">${t('support.mine')} <small>${mine.length || ''}</small></h2>
+    ${mine.length ? '<div class="qr-grid mine"></div>' : `
       <div class="empty">
         <div class="empty-art">⭐</div>
         <p>${t('support.empty')}</p>
@@ -461,8 +570,21 @@ export async function renderSupport(view) {
     setPref('supportRegion', c.dataset.region);
     renderSupport(view);
   }));
-  const grid = view.querySelector('.qr-grid');
-  for (const item of items) {
+
+  const og = view.querySelector('.support-grid.official');
+  for (const entry of entries) {
+    const eff = effective(entry, overrides.get(entry.id));
+    const b = document.createElement('button');
+    b.className = 'support-tile';
+    b.innerHTML = `<canvas></canvas>`;
+    b.setAttribute('aria-label', eff.label || t('support.unknown'));
+    drawSupportCard(b.querySelector('canvas'), eff, 0.4);
+    b.addEventListener('click', () => openOfficial(entry, overrides.get(entry.id) ?? null, () => renderSupport(view)));
+    og.append(b);
+  }
+
+  const grid = view.querySelector('.qr-grid.mine');
+  for (const item of mine) {
     const b = document.createElement('button');
     b.className = 'qr-tile';
     b.innerHTML = `<canvas></canvas><span>${esc(item.label || t('support.title'))}</span><small>${regionBadge(item.region)}</small>`;

@@ -23,6 +23,7 @@ export function loadImage(src) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     const url = src instanceof Blob ? URL.createObjectURL(src) : src;
+    if (!(src instanceof Blob)) img.crossOrigin = 'anonymous'; // keeps canvases exportable (needs CORS)
     img.onload = () => resolve(img);
     img.onerror = () => reject(new Error('Could not read image'));
     img.src = url;
