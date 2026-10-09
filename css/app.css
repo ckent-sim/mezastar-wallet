@@ -265,3 +265,4 @@ input[type=color] { width: 44px; height: 34px; border: 1px solid var(--line); bo
 .usage tr.total td { font-weight: 700; border-bottom-width: 2px; }
 .panel code { font-size: 12px; }
 .empty a { color: var(--yellow); }
+.tabbar b { font-weight: inherit; }

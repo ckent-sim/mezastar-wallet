@@ -4,31 +4,32 @@
 // focusRect: optional {x,y,w,h} in source-image pixels to zoom onto initially (e.g. a detected QR).
 
 import { loadImage, canvasToBlob } from './util.js';
+import { t } from './i18n.js';
 
-const ASPECTS = [['1:1', 1], ['3:4', 3 / 4], ['4:3', 4 / 3], ['Original', null]];
+const ASPECTS = [['1:1', 1], ['3:4', 3 / 4], ['4:3', 4 / 3], ['crop.original', null]];
 const MAX_OUT = 1600;
 const MAX_ZOOM = 10;
 
-export async function openCropper(source, { aspect = 1, title = 'Crop', type = 'image/jpeg', focusRect = null } = {}) {
+export async function openCropper(source, { aspect = 1, title = '', type = 'image/jpeg', focusRect = null } = {}) {
   const img = await loadImage(source);
   return new Promise((resolve) => {
     const root = document.createElement('div');
     root.className = 'cropper';
     root.innerHTML = `
       <header class="cropper-bar">
-        <button class="btn ghost" data-act="cancel">Cancel</button>
+        <button class="btn ghost" data-act="cancel">${t('common.cancel')}</button>
         <h2>${title}</h2>
-        <button class="btn primary" data-act="done">Use</button>
+        <button class="btn primary" data-act="done">${t('common.use')}</button>
       </header>
       <div class="cropper-stage"><canvas></canvas></div>
       <footer class="cropper-tools">
         <div class="chips">${ASPECTS.map(([l, v]) =>
-          `<button class="chip" data-aspect="${v ?? ''}">${l}</button>`).join('')}</div>
+          `<button class="chip" data-aspect="${v ?? ''}">${v ? l : t(l)}</button>`).join('')}</div>
         <div class="row">
-          <button class="icon-btn" data-act="rotate" title="Rotate 90°" aria-label="Rotate 90°">⟳</button>
-          <input type="range" min="1" max="${MAX_ZOOM}" step="0.01" value="1" aria-label="Zoom">
-          ${focusRect ? '<button class="btn small" data-act="focus">Fit QR</button>' : ''}
-          <button class="btn small" data-act="reset">Reset</button>
+          <button class="icon-btn" data-act="rotate" title="${t('crop.rotate')}" aria-label="${t('crop.rotate')}">⟳</button>
+          <input type="range" min="1" max="${MAX_ZOOM}" step="0.01" value="1" aria-label="${t('crop.zoom')}">
+          ${focusRect ? `<button class="btn small" data-act="focus">${t('crop.fitQr')}</button>` : ''}
+          <button class="btn small" data-act="reset">${t('common.reset')}</button>
         </div>
       </footer>`;
     document.body.append(root);

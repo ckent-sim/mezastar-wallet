@@ -1,6 +1,10 @@
 // Pokémon name autocomplete on a text input, backed by the bundled offline list.
 import { loadPokemon, searchPokemon } from './pokemon.js';
 import { esc } from './util.js';
+import { getLang } from './i18n.js';
+
+// In Chinese mode the Chinese name is primary; the others are shown as hints.
+const names = (p) => (getLang() === 'zh' && p.zh ? [p.zh, `${p.en} ${p.ja}`] : [p.en, `${p.ja} ${p.zh}`]);
 
 /** onPick(entry) is called when a suggestion is chosen. */
 export function attachPokemonAutocomplete(input, onPick = () => {}) {
@@ -23,11 +27,11 @@ export function attachPokemonAutocomplete(input, onPick = () => {}) {
     list.innerHTML = items.map((p, i) => `
       <li role="option" data-i="${i}" class="${i === active ? 'on' : ''}">
         <span class="ac-no">#${String(p.id).padStart(4, '0')}</span>
-        <b>${esc(p.en)}</b><small>${esc(p.ja)} ${esc(p.zh)}</small>
+        <b>${esc(names(p)[0])}</b><small>${esc(names(p)[1])}</small>
       </li>`).join('');
   };
   const pick = (p) => {
-    input.value = p.en;
+    input.value = names(p)[0];
     items = [];
     render();
     onPick(p);

@@ -6,9 +6,9 @@ import { openCropper } from './cropper.js';
 import { openSheet, confirmSheet } from './sheet.js';
 import { attachPokemonAutocomplete } from './autocomplete.js';
 import { uid, loadImage, imageToImageData, pickFile, toast, canvasToBlob, download, esc } from './util.js';
+import { t } from './i18n.js';
 
 const CARD_PX = 1080;
-const STYLE_NAMES = { clean: 'Clean', pokeball: 'Poké Ball', star: 'Starry', neon: 'Neon', holo: 'Holo' };
 
 // ---------- shared helpers ----------
 
@@ -31,8 +31,8 @@ function rememberFrame({ style, color, accent }) {
   } catch { /* storage unavailable — fine */ }
 }
 
-const titleOf = (item) => (item.kind === 'trainer' ? 'E-TRAINER ID' : (item.label || 'SUPPORT POKÉMON').toUpperCase());
-const subtitleOf = (item) => (item.kind === 'trainer' ? item.label || '' : 'SUPPORT POKÉMON');
+const titleOf = (item) => (item.kind === 'trainer' ? t('card.trainer') : (item.label || t('card.support')).toUpperCase());
+const subtitleOf = (item) => (item.kind === 'trainer' ? item.label || '' : t('card.support'));
 const usesRedraw = (item) => !!item.bytes && !item.showOriginal;
 
 export async function drawCard(canvas, item, size = CARD_PX) {
@@ -86,13 +86,13 @@ async function importQr(kind, existing = null) {
     const k = img.naturalWidth / data.width;
     full = hit ? { ...hit, rect: { x: hit.rect.x * k, y: hit.rect.y * k, w: hit.rect.w * k, h: hit.rect.h * k } } : null;
   } catch {
-    toast('Could not open that image');
+    toast(t('qr.openFail'));
     return null;
   }
 
   const cropped = await openCropper(file, {
     aspect: 1,
-    title: 'Crop QR code',
+    title: t('crop.qr'),
     type: 'image/png',
     focusRect: full?.rect ?? null,
   });
@@ -121,21 +121,19 @@ async function importQr(kind, existing = null) {
   }
   await dbPut('qr', item);
   navigator.storage?.persist?.();
-  if (!decoded) toast("Couldn't read the QR — saved the image only");
-  else if (!redrawOk) toast('QR read ✓ (showing original image — redraw not exact)');
-  else toast('QR read ✓');
+  toast(t(!decoded ? 'qr.readFail' : redrawOk ? 'qr.readOk' : 'qr.readNotExact'));
   return item;
 }
 
 function askLabel(item) {
   return new Promise((resolve) => {
     const s = openSheet(`
-      <h3>${item.kind === 'trainer' ? 'Trainer name' : 'Support Pokémon'}</h3>
+      <h3>${t(item.kind === 'trainer' ? 'label.trainer' : 'label.support')}</h3>
       <form class="form">
-        <label>Name<input name="label" maxlength="40" placeholder="${item.kind === 'trainer' ? 'e.g. Ash' : 'e.g. Pikachu'}"></label>
+        <label>${t('label.name')}<input name="label" maxlength="40" placeholder="${t(item.kind === 'trainer' ? 'label.phTrainer' : 'label.phSupport')}"></label>
         <div class="sheet-actions">
-          <button type="button" class="btn ghost" data-close>Cancel</button>
-          <button class="btn primary">Save</button>
+          <button type="button" class="btn ghost" data-close>${t('common.cancel')}</button>
+          <button class="btn primary">${t('common.save')}</button>
         </div>
       </form>`);
     const input = s.el.querySelector('input');
@@ -161,18 +159,18 @@ function qrPanel(item, onChange) {
   el.innerHTML = `
     <canvas class="card-canvas" aria-label="${esc(titleOf(item))} card"></canvas>
     <div class="status-line">${item.bytes
-      ? (usesRedraw(item) ? '<span class="ok">● Redrawn from decoded QR</span>' : '<span class="warn">● Showing original image</span>')
-      : '<span class="warn">● Image only (QR not decoded)</span>'}</div>
+      ? (usesRedraw(item) ? `<span class="ok">${t('qr.redrawn')}</span>` : `<span class="warn">${t('qr.original')}</span>`)
+      : `<span class="warn">${t('qr.imageOnly')}</span>`}</div>
     <div class="actions">
-      <button class="btn primary big" data-act="scan">📲 Scan mode</button>
-      <button class="btn" data-act="frame">🎨 Frame</button>
-      <button class="btn" data-act="toggle" ${item.bytes ? '' : 'disabled'}>${usesRedraw(item) ? '🖼 Original' : '▦ Redraw'}</button>
-      <button class="btn" data-act="png">⬇ Save PNG</button>
-      <button class="btn" data-act="label">✏️ Rename</button>
-      <button class="btn" data-act="replace">♻ Replace</button>
-      <button class="btn danger" data-act="delete">🗑 Delete</button>
+      <button class="btn primary big" data-act="scan">${t('qr.scan')}</button>
+      <button class="btn" data-act="frame">${t('qr.frame')}</button>
+      <button class="btn" data-act="toggle" ${item.bytes ? '' : 'disabled'}>${t(usesRedraw(item) ? 'qr.showOriginal' : 'qr.showRedraw')}</button>
+      <button class="btn" data-act="png">${t('qr.png')}</button>
+      <button class="btn" data-act="label">${t('qr.rename')}</button>
+      <button class="btn" data-act="replace">${t('qr.replace')}</button>
+      <button class="btn danger" data-act="delete">${t('qr.delete')}</button>
     </div>
-    ${item.text != null ? `<details class="decoded"><summary>Decoded data</summary><code></code></details>` : ''}`;
+    ${item.text != null ? `<details class="decoded"><summary>${t('qr.decoded')}</summary><code></code></details>` : ''}`;
   if (item.text != null) el.querySelector('code').textContent = item.text;
   drawCard(el.querySelector('canvas'), item);
 
@@ -184,7 +182,7 @@ function qrPanel(item, onChange) {
       if (await openFrameEditor(item)) onChange();
     } else if (act === 'toggle') {
       item.showOriginal = !item.showOriginal;
-      if (!item.showOriginal && !verifyReencode(item.bytes)) toast('Heads-up: redraw may not scan identically');
+      if (!item.showOriginal && !verifyReencode(item.bytes)) toast(t('qr.redrawWarn'));
       await dbPut('qr', item);
       onChange();
     } else if (act === 'png') {
@@ -199,7 +197,7 @@ function qrPanel(item, onChange) {
     } else if (act === 'replace') {
       if (await importQr(item.kind, item)) onChange();
     } else if (act === 'delete') {
-      if (await confirmSheet(`Delete this ${item.kind === 'trainer' ? 'E-TrainerID' : 'support QR'}?`)) {
+      if (await confirmSheet(t(item.kind === 'trainer' ? 'qr.deleteTrainer' : 'qr.deleteSupport'), { ok: t('common.delete') })) {
         await dbDelete('qr', item.id);
         onChange(true);
       }
@@ -214,21 +212,21 @@ function openFrameEditor(item) {
   return new Promise((resolve) => {
     const draft = { ...lastFrame(), ...item.frame };
     const s = openSheet(`
-      <h3>Frame design</h3>
+      <h3>${t('frame.title')}</h3>
       <canvas class="card-canvas preview"></canvas>
       <div class="chips styles">${FRAME_STYLES.map((st) =>
-        `<button class="chip" data-style="${st}">${STYLE_NAMES[st]}</button>`).join('')}</div>
+        `<button class="chip" data-style="${st}">${t(`style.${st}`)}</button>`).join('')}</div>
       <div class="color-row">
-        <label>Main <input type="color" name="color"></label>
-        <label>Accent <input type="color" name="accent"></label>
+        <label>${t('frame.main')} <input type="color" name="color"></label>
+        <label>${t('frame.accent')} <input type="color" name="accent"></label>
       </div>
       <div class="row wrap">
-        <button class="btn" data-act="bg">🖼 Background image…</button>
-        <button class="btn ghost" data-act="nobg">Remove background</button>
+        <button class="btn" data-act="bg">${t('frame.bg')}</button>
+        <button class="btn ghost" data-act="nobg">${t('frame.noBg')}</button>
       </div>
       <div class="sheet-actions">
-        <button class="btn ghost" data-close>Cancel</button>
-        <button class="btn primary" data-act="save">Save</button>
+        <button class="btn ghost" data-close>${t('common.cancel')}</button>
+        <button class="btn primary" data-act="save">${t('common.save')}</button>
       </div>`, { wide: true });
     const canvas = s.el.querySelector('canvas');
     const color = s.el.querySelector('[name=color]');
@@ -263,7 +261,7 @@ function openFrameEditor(item) {
       if (act === 'bg') {
         const file = await pickFile();
         if (!file) return;
-        const bg = await openCropper(file, { aspect: 1, title: 'Crop background', type: 'image/jpeg' });
+        const bg = await openCropper(file, { aspect: 1, title: t('crop.bg'), type: 'image/jpeg' });
         if (bg) {
           draft.background = bg;
           refresh();
@@ -292,10 +290,10 @@ async function openScan(item) {
     <canvas></canvas>
     <p class="scan-label"></p>
     <div class="scan-bar">
-      <button class="btn" data-act="mode">Show framed</button>
-      <button class="btn primary" data-act="close">Done</button>
+      <button class="btn" data-act="mode">${t('scan.framed')}</button>
+      <button class="btn primary" data-act="close">${t('common.done')}</button>
     </div>
-    <p class="scan-hint">Turn screen brightness up for the arcade scanner.</p>`;
+    <p class="scan-hint">${t('scan.hint')}</p>`;
   el.querySelector('.scan-label').textContent = item.label || titleOf(item);
   document.body.append(el);
   const canvas = el.querySelector('canvas');
@@ -318,7 +316,7 @@ async function openScan(item) {
     const act = e.target.closest('[data-act]')?.dataset.act;
     if (act === 'mode') {
       framed = !framed;
-      e.target.textContent = framed ? 'Show plain' : 'Show framed';
+      e.target.textContent = t(framed ? 'scan.plain' : 'scan.framed');
       paint();
     } else if (act === 'close') close();
   });
@@ -330,14 +328,14 @@ async function openScan(item) {
 export async function renderTrainer(view) {
   const items = (await dbAll('qr')).filter((q) => q.kind === 'trainer').sort((a, b) => b.createdAt - a.createdAt);
   const item = items[0];
-  view.innerHTML = '<h1 class="screen-title">E-TrainerID</h1>';
+  view.innerHTML = `<h1 class="screen-title">${t('trainer.title')}</h1>`;
   if (!item) {
     view.insertAdjacentHTML('beforeend', `
       <div class="empty">
         <div class="empty-art">🪪</div>
-        <p>Import a photo or screenshot of your Trainer ID QR code. You'll crop it, and the app redraws it as a crisp E-TrainerID card.</p>
-        <button class="btn primary big" data-act="import">＋ Import Trainer ID QR</button>
-        <p class="small">🔒 Saved only on this device. Never uploaded to any server. <a href="#settings">How it works</a></p>
+        <p>${t('trainer.empty')}</p>
+        <button class="btn primary big" data-act="import">${t('trainer.import')}</button>
+        <p class="small">${t('trainer.privacy')} <a href="#settings">${t('trainer.how')}</a></p>
       </div>`);
     view.querySelector('[data-act=import]').addEventListener('click', async () => {
       if (await importQr('trainer')) renderTrainer(view);
@@ -351,13 +349,13 @@ export async function renderSupport(view) {
   const items = (await dbAll('qr')).filter((q) => q.kind === 'support').sort((a, b) => b.createdAt - a.createdAt);
   view.innerHTML = `
     <div class="screen-head">
-      <h1 class="screen-title">Support Pokémon <small>${items.length || ''}</small></h1>
-      <button class="btn primary" data-act="add">＋ Add QR</button>
+      <h1 class="screen-title">${t('support.title')} <small>${items.length || ''}</small></h1>
+      <button class="btn primary" data-act="add">${t('support.add')}</button>
     </div>
     ${items.length ? '<div class="qr-grid"></div>' : `
       <div class="empty">
         <div class="empty-art">⭐</div>
-        <p>Save official support Pokémon QR codes here so they're ready at the machine — even offline.</p>
+        <p>${t('support.empty')}</p>
       </div>`}`;
   view.querySelector('[data-act=add]').addEventListener('click', async () => {
     if (await importQr('support')) renderSupport(view);
@@ -366,7 +364,7 @@ export async function renderSupport(view) {
   for (const item of items) {
     const b = document.createElement('button');
     b.className = 'qr-tile';
-    b.innerHTML = `<canvas></canvas><span>${esc(item.label || 'Support Pokémon')}</span>`;
+    b.innerHTML = `<canvas></canvas><span>${esc(item.label || t('support.title'))}</span>`;
     drawCard(b.querySelector('canvas'), item, 480);
     b.addEventListener('click', () => openDetail(item, () => renderSupport(view)));
     grid.append(b);
@@ -374,7 +372,7 @@ export async function renderSupport(view) {
 }
 
 function openDetail(item, refresh) {
-  const s = openSheet('<button class="sheet-x" data-close aria-label="Close">✕</button><div class="detail"></div>', { wide: true });
+  const s = openSheet(`<button class="sheet-x" data-close aria-label="${t('common.close')}">✕</button><div class="detail"></div>`, { wide: true });
   const host = s.el.querySelector('.detail');
   const mount = () => {
     host.replaceChildren(qrPanel(item, (deleted) => {

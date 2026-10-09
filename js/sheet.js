@@ -1,4 +1,5 @@
 // Bottom-sheet modal. openSheet(html) → { el, close, closed: Promise<void> }
+import { t } from './i18n.js';
 
 export function openSheet(html, { wide = false } = {}) {
   const backdrop = document.createElement('div');
@@ -23,12 +24,12 @@ export function openSheet(html, { wide = false } = {}) {
   return { el, close, closed };
 }
 
-export function confirmSheet(message, { ok = 'Delete', danger = true } = {}) {
+export function confirmSheet(message, { ok = t('common.delete'), danger = true } = {}) {
   return new Promise((resolve) => {
     const s = openSheet(`
       <p class="confirm-msg"></p>
       <div class="sheet-actions">
-        <button class="btn ghost" data-close>Cancel</button>
+        <button class="btn ghost" data-close>${t('common.cancel')}</button>
         <button class="btn ${danger ? 'danger' : 'primary'}" data-ok>${ok}</button>
       </div>`);
     s.el.querySelector('.confirm-msg').textContent = message;

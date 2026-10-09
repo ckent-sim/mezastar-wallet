@@ -1,8 +1,9 @@
-// Settings: backup export/import, storage info, install, wipe.
+// Settings: language, privacy explanation, backup export/import, storage info, install, wipe.
 import { dbAll, dbPut, dbClear } from './db.js';
 import { serializeBackup, parseBackup } from './backup.js';
 import { confirmSheet } from './sheet.js';
 import { blobToDataUrl, dataUrlToBlob, download, pickFile, toast } from './util.js';
+import { t, getLang, setLang, LANGS } from './i18n.js';
 
 let installEvent = null;
 window.addEventListener('beforeinstallprompt', (e) => {
@@ -18,7 +19,7 @@ function measure(qr, tags) {
   const textBytes = (obj) => new Blob([JSON.stringify(obj, (k, v) => (v instanceof Blob ? undefined : v))]).size;
   let prefs = 0;
   try {
-    prefs = (localStorage.getItem('mz.frame') ?? '').length;
+    prefs = (localStorage.getItem('mz.frame') ?? '').length + (localStorage.getItem('mz.lang') ?? '').length;
   } catch { /* storage unavailable */ }
   return {
     tagPhotos: tags.reduce((n, t) => n + size(t.photo), 0),
@@ -39,68 +40,67 @@ export async function renderSettings(view) {
   const dataTotal = bytes.tagPhotos + bytes.qrImages + bytes.backgrounds + bytes.text;
 
   view.innerHTML = `
-    <h1 class="screen-title">Settings</h1>
+    <h1 class="screen-title">${t('settings.title')}</h1>
+    <section class="panel">
+      <h2>${t('settings.language')}</h2>
+      <div class="chips">${Object.entries(LANGS).map(([code, name]) =>
+        `<button class="chip ${code === getLang() ? 'on' : ''}" data-lang="${code}">${name}</button>`).join('')}</div>
+    </section>
     <section class="panel privacy">
-      <h2>🔒 Privacy &amp; how your data is stored</h2>
-      <p><b>Nothing is uploaded. There is no server and no account.</b> Your E-TrainerID, tags, photos and
-        support QR codes are saved only inside this browser on this device. The app works fully offline.</p>
+      <h2>${t('settings.privacyTitle')}</h2>
+      <p>${t('settings.privacyLead')}</p>
       <ul class="muted">
-        <li><b>Pictures</b> you crop are saved as image files in the browser's on-device database (IndexedDB):
-          QR codes as lossless PNG, tag photos and backgrounds as JPEG (90% quality, max 1600 px).</li>
-        <li><b>Text</b> such as names, notes, favorites, decoded QR data and frame designs is saved in the same database.</li>
-        <li><b>Your last-used frame style</b> is remembered in browser storage (localStorage), so new cards start with it.</li>
-        <li>The only network use is <b>optional Pokémon artwork</b> for tags without a photo, which is downloaded
-          from PokéAPI's public image library. Nothing about you is sent.</li>
+        <li>${t('settings.privacyPics')}</li>
+        <li>${t('settings.privacyText')}</li>
+        <li>${t('settings.privacyPrefs')}</li>
+        <li>${t('settings.privacyNet')}</li>
       </ul>
-      <p class="muted"><b>Important:</b> because nothing is on a server, clearing this site's browser data,
-        uninstalling the app, or losing your phone deletes your data. Use <b>Export backup</b> to keep a copy
-        or move to a new phone.</p>
+      <p class="muted">${t('settings.privacyWarn')}</p>
     </section>
     <section class="panel">
-      <h2>Your data</h2>
-      <p class="muted">${qr.filter((q) => q.kind === 'trainer').length ? 'E-TrainerID saved' : 'No E-TrainerID'}
-        · ${tags.length} tag${tags.length === 1 ? '' : 's'}
-        · ${qr.filter((q) => q.kind === 'support').length} support QR</p>
-      <p class="muted">Everything is stored only on this device. Export a backup to move it to another phone.</p>
+      <h2>${t('settings.dataTitle')}</h2>
+      <p class="muted">${t(qr.some((q) => q.kind === 'trainer') ? 'settings.hasTrainer' : 'settings.noTrainer')}
+        · ${t('settings.counts', { tags: tags.length, support: qr.filter((q) => q.kind === 'support').length })}</p>
+      <p class="muted">${t('settings.dataNote')}</p>
       <div class="row wrap">
-        <button class="btn primary" data-act="export">⬇ Export backup</button>
-        <button class="btn" data-act="import">⬆ Import backup</button>
+        <button class="btn primary" data-act="export">${t('settings.export')}</button>
+        <button class="btn" data-act="import">${t('settings.import')}</button>
       </div>
     </section>
     <section class="panel">
-      <h2>Storage</h2>
+      <h2>${t('settings.storageTitle')}</h2>
       <table class="usage">
-        <tr><td>Tag photos (${tags.filter((t) => t.photo).length})</td><td>${fmt(bytes.tagPhotos)}</td></tr>
-        <tr><td>QR images (${qr.length})</td><td>${fmt(bytes.qrImages)}</td></tr>
-        <tr><td>Frame backgrounds (${qr.filter((q) => q.frame?.background).length})</td><td>${fmt(bytes.backgrounds)}</td></tr>
-        <tr><td>Text &amp; settings</td><td>${fmt(bytes.text)}</td></tr>
-        <tr class="total"><td>Your data</td><td>${fmt(dataTotal)}</td></tr>
+        <tr><td>${t('settings.rowPhotos', { n: tags.filter((x) => x.photo).length })}</td><td>${fmt(bytes.tagPhotos)}</td></tr>
+        <tr><td>${t('settings.rowQr', { n: qr.length })}</td><td>${fmt(bytes.qrImages)}</td></tr>
+        <tr><td>${t('settings.rowBg', { n: qr.filter((q) => q.frame?.background).length })}</td><td>${fmt(bytes.backgrounds)}</td></tr>
+        <tr><td>${t('settings.rowText')}</td><td>${fmt(bytes.text)}</td></tr>
+        <tr class="total"><td>${t('settings.rowData')}</td><td>${fmt(dataTotal)}</td></tr>
         ${est ? `
-        <tr><td>Total used on this device*</td><td>${fmt(est.usage)}</td></tr>
-        <tr><td>Space the browser allows*</td><td>${fmt(est.quota)}</td></tr>` : ''}
+        <tr><td>${t('settings.rowUsage')}</td><td>${fmt(est.usage)}</td></tr>
+        <tr class="quota"><td>${t('settings.rowQuota')}</td><td>${fmt(est.quota)}</td></tr>` : ''}
       </table>
-      <p class="muted small">“Your data” is the exact size of the pictures and text saved by the app.
-        *Totals come from your browser (<code>navigator.storage.estimate()</code>). They also include the offline copy
-        of the app itself, and some browsers round or pad them for privacy, so they won't add up exactly.</p>
-      <p class="muted">${persisted ? '✅ Protected from automatic browser cleanup.' : '⚠️ Not yet protected from browser cleanup. When the phone is low on space, the browser may clear data of sites you rarely use.'}</p>
-      ${persisted ? '' : '<button class="btn" data-act="persist">Protect my data</button>'}
+      <p class="muted small">${t('settings.storageNote')}</p>
+      <p class="muted">${t(persisted ? 'settings.persisted' : 'settings.notPersisted')}</p>
+      ${persisted ? '' : `<button class="btn" data-act="persist">${t('settings.persist')}</button>`}
     </section>
     ${standalone ? '' : `
     <section class="panel">
-      <h2>Install</h2>
+      <h2>${t('settings.installTitle')}</h2>
       ${ios
-        ? '<p class="muted">In Safari tap <b>Share</b> → <b>Add to Home Screen</b> to use the app offline like a native app.</p>'
-        : `<p class="muted">Install to your home screen for quick offline access.</p>
-           <button class="btn" data-act="install" ${installEvent ? '' : 'disabled'}>📲 Install app</button>
-           ${installEvent ? '' : '<p class="muted small">If the button is disabled, use your browser menu → “Install app” / “Add to Home screen”.</p>'}`}
+        ? `<p class="muted">${t('settings.installIos')}</p>`
+        : `<p class="muted">${t('settings.installText')}</p>
+           <button class="btn" data-act="install" ${installEvent ? '' : 'disabled'}>${t('settings.install')}</button>
+           ${installEvent ? '' : `<p class="muted small">${t('settings.installHint')}</p>`}`}
     </section>`}
     <section class="panel danger-zone">
-      <h2>Danger zone</h2>
-      <button class="btn danger" data-act="wipe">Delete all data</button>
+      <h2>${t('settings.dangerTitle')}</h2>
+      <button class="btn danger" data-act="wipe">${t('settings.wipe')}</button>
     </section>
-    <p class="muted small center">Mezastar Wallet · fan-made, not affiliated with The Pokémon Company or T-ARTS.</p>`;
+    <p class="muted small center">${t('settings.footer')}</p>`;
 
   view.onclick = async (e) => {
+    const code = e.target.closest('[data-lang]')?.dataset.lang;
+    if (code) return setLang(code); // app re-renders on 'langchange'
     const act = e.target.closest('[data-act]')?.dataset.act;
     if (act === 'export') {
       const data = await serializeBackup({ qr, tags }, blobToDataUrl);
@@ -113,14 +113,14 @@ export async function renderSettings(view) {
         const parsed = parseBackup(JSON.parse(await file.text()), dataUrlToBlob);
         for (const r of parsed.qr) await dbPut('qr', r);
         for (const r of parsed.tags) await dbPut('tags', r);
-        toast(`Imported ${parsed.qr.length} QR + ${parsed.tags.length} tags`);
+        toast(t('settings.imported', { qr: parsed.qr.length, tags: parsed.tags.length }));
         renderSettings(view);
       } catch (err) {
-        toast(err instanceof SyntaxError ? 'That file is not valid JSON' : err.message);
+        toast(t(err instanceof SyntaxError ? 'settings.badJson' : 'settings.badBackup'));
       }
     } else if (act === 'persist') {
       const ok = await navigator.storage?.persist?.();
-      toast(ok ? 'Data protected ✓' : 'Browser declined — install the app and try again');
+      toast(t(ok ? 'settings.persistOk' : 'settings.persistNo'));
       renderSettings(view);
     } else if (act === 'install' && installEvent) {
       installEvent.prompt();
@@ -128,10 +128,10 @@ export async function renderSettings(view) {
       installEvent = null;
       renderSettings(view);
     } else if (act === 'wipe') {
-      if (await confirmSheet('Delete your E-TrainerID, all tags and support QR codes from this device? This cannot be undone.', { ok: 'Delete everything' })) {
+      if (await confirmSheet(t('settings.wipeConfirm'), { ok: t('settings.wipeOk') })) {
         await dbClear('qr');
         await dbClear('tags');
-        toast('All data deleted');
+        toast(t('settings.wiped'));
         renderSettings(view);
       }
     }

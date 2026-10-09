@@ -2,6 +2,7 @@
 import { renderTrainer, renderSupport } from './qr-ui.js';
 import { renderTags } from './tags-ui.js';
 import { renderSettings } from './settings-ui.js';
+import { t, getLang } from './i18n.js';
 
 const routes = { trainer: renderTrainer, tags: renderTags, support: renderSupport, settings: renderSettings };
 const view = document.getElementById('view');
@@ -15,12 +16,22 @@ async function route() {
     await routes[name](view);
   } catch (err) {
     console.error(err);
-    view.innerHTML = '<p class="muted">Something went wrong loading this screen.</p>';
+    view.innerHTML = `<p class="muted">${t('common.loadError')}</p>`;
   }
   view.focus({ preventScroll: true });
 }
 
+function applyStaticText() {
+  document.documentElement.lang = getLang() === 'zh' ? 'zh-Hans' : 'en';
+  document.querySelectorAll('[data-i18n]').forEach((el) => (el.textContent = t(el.dataset.i18n)));
+}
+
 window.addEventListener('hashchange', route);
+window.addEventListener('langchange', () => {
+  applyStaticText();
+  route();
+});
+applyStaticText();
 
 const pill = document.querySelector('.offline-pill');
 const net = () => (pill.hidden = navigator.onLine);

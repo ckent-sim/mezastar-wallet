@@ -5,6 +5,7 @@ import { openSheet, confirmSheet } from './sheet.js';
 import { attachPokemonAutocomplete } from './autocomplete.js';
 import { spriteUrl } from './pokemon.js';
 import { uid, pickFile, toast, esc } from './util.js';
+import { t } from './i18n.js';
 
 let urls = [];
 const objUrl = (blob) => {
@@ -22,12 +23,12 @@ export async function renderTags(view) {
   const all = await dbAll('tags');
   view.innerHTML = `
     <div class="screen-head">
-      <h1 class="screen-title">My Tags <small>${all.length || ''}</small></h1>
-      <button class="btn primary" data-act="add">＋ Add tag</button>
+      <h1 class="screen-title">${t('tags.title')} <small>${all.length || ''}</small></h1>
+      <button class="btn primary" data-act="add">${t('tags.add')}</button>
     </div>
     <div class="search-row">
-      <input type="search" placeholder="Search name or note" aria-label="Search tags">
-      <button class="chip" data-act="fav" aria-pressed="${favOnly}">★ Favorites</button>
+      <input type="search" placeholder="${t('tags.search')}" aria-label="${t('tags.search')}">
+      <button class="chip" data-act="fav" aria-pressed="${favOnly}">${t('tags.favs')}</button>
     </div>
     <div class="tag-grid"></div>`;
   const search = view.querySelector('input');
@@ -39,23 +40,23 @@ export async function renderTags(view) {
     urls = [];
     const q = fold(query.trim());
     const list = all
-      .filter((t) => (!favOnly || t.favorite) && (!q || fold(t.name).includes(q) || fold(t.note).includes(q)))
+      .filter((x) => (!favOnly || x.favorite) && (!q || fold(x.name).includes(q) || fold(x.note).includes(q)))
       .sort((a, b) => (b.favorite - a.favorite) || a.name.localeCompare(b.name));
     view.querySelector('[data-act=fav]').classList.toggle('on', favOnly);
     if (!all.length) {
       grid.innerHTML = `<div class="empty wide"><div class="empty-art">🏷️</div>
-        <p>Keep track of the Mezastar tags you own. Snap a photo, crop it, and name the Pokémon.</p></div>`;
+        <p>${t('tags.empty')}</p></div>`;
       return;
     }
-    grid.innerHTML = list.length ? list.map((t) => `
-      <article class="tag-card" data-id="${t.id}">
-        <button class="tag-open" data-act="open" aria-label="Edit ${esc(t.name)}">
-          ${thumb(t) ? `<img src="${thumb(t)}" alt="" loading="lazy">` : '<div class="no-photo">?</div>'}
-          <span class="tag-name">${esc(t.name || 'Unnamed')}</span>
-          ${t.note ? `<span class="tag-note">${esc(t.note)}</span>` : ''}
+    grid.innerHTML = list.length ? list.map((tag) => `
+      <article class="tag-card" data-id="${tag.id}">
+        <button class="tag-open" data-act="open" aria-label="${t('tags.editAria', { name: esc(tag.name) })}">
+          ${thumb(tag) ? `<img src="${thumb(tag)}" alt="" loading="lazy">` : '<div class="no-photo">?</div>'}
+          <span class="tag-name">${esc(tag.name || t('tags.unnamed'))}</span>
+          ${tag.note ? `<span class="tag-note">${esc(tag.note)}</span>` : ''}
         </button>
-        <button class="fav ${t.favorite ? 'on' : ''}" data-act="star" aria-label="Favorite" aria-pressed="${!!t.favorite}">★</button>
-      </article>`).join('') : '<p class="muted">No tags match.</p>';
+        <button class="fav ${tag.favorite ? 'on' : ''}" data-act="star" aria-label="${t('tags.favAria')}" aria-pressed="${!!tag.favorite}">★</button>
+      </article>`).join('') : `<p class="muted">${t('tags.noMatch')}</p>`;
   };
   paint();
 
@@ -67,7 +68,7 @@ export async function renderTags(view) {
   view.onclick = async (e) => {
     const act = e.target.closest('[data-act]')?.dataset.act;
     const id = e.target.closest('[data-id]')?.dataset.id;
-    const tag = all.find((t) => t.id === id);
+    const tag = all.find((x) => x.id === id);
     if (act === 'add') {
       if (await editTag(null)) renderTags(view);
     } else if (act === 'fav') {
@@ -89,17 +90,17 @@ function editTag(existing) {
     : { id: uid(), name: '', pokemonId: null, photo: null, note: '', favorite: false, createdAt: Date.now() };
   return new Promise((resolve) => {
     const s = openSheet(`
-      <h3>${existing ? 'Edit tag' : 'New tag'}</h3>
+      <h3>${t(existing ? 'tags.edit' : 'tags.new')}</h3>
       <form class="form">
-        <button type="button" class="photo-pick" data-act="photo" aria-label="Choose photo"></button>
-        <label>Pokémon<input name="name" required maxlength="40" placeholder="Search Pokémon…"></label>
-        <label>Note<textarea name="note" rows="2" maxlength="200" placeholder="e.g. Ultra Star, duplicate ×2"></textarea></label>
-        <label class="check"><input type="checkbox" name="favorite"> ★ Favorite</label>
+        <button type="button" class="photo-pick" data-act="photo" aria-label="${t('tags.choosePhoto')}"></button>
+        <label>${t('tags.pokemon')}<input name="name" required maxlength="40" placeholder="${t('tags.searchPokemon')}"></label>
+        <label>${t('tags.note')}<textarea name="note" rows="2" maxlength="200" placeholder="${t('tags.notePh')}"></textarea></label>
+        <label class="check"><input type="checkbox" name="favorite"> ${t('tags.favorite')}</label>
         <div class="sheet-actions">
-          ${existing ? '<button type="button" class="btn danger" data-act="delete">Delete</button>' : ''}
+          ${existing ? `<button type="button" class="btn danger" data-act="delete">${t('common.delete')}</button>` : ''}
           <span class="spacer"></span>
-          <button type="button" class="btn ghost" data-close>Cancel</button>
-          <button class="btn primary">Save</button>
+          <button type="button" class="btn ghost" data-close>${t('common.cancel')}</button>
+          <button class="btn primary">${t('common.save')}</button>
         </div>
       </form>`);
     const f = s.el.querySelector('form');
@@ -115,7 +116,7 @@ function editTag(existing) {
       if (photoUrl) URL.revokeObjectURL(photoUrl);
       photoUrl = tag.photo ? URL.createObjectURL(tag.photo) : null;
       const src = photoUrl ?? (tag.pokemonId ? spriteUrl(tag.pokemonId) : null);
-      photoBtn.innerHTML = src ? `<img src="${src}" alt="">` : '<span>📷<br>Add photo</span>';
+      photoBtn.innerHTML = src ? `<img src="${src}" alt="">` : `<span>${t('tags.addPhoto')}</span>`;
     };
     showPhoto();
 
@@ -125,13 +126,13 @@ function editTag(existing) {
       if (act === 'photo') {
         const file = await pickFile();
         if (!file) return;
-        const blob = await openCropper(file, { aspect: 3 / 4, title: 'Crop tag photo', type: 'image/jpeg' });
+        const blob = await openCropper(file, { aspect: 3 / 4, title: t('crop.tag'), type: 'image/jpeg' });
         if (blob) {
           tag.photo = blob;
           showPhoto();
         }
       } else if (act === 'delete') {
-        if (await confirmSheet(`Delete “${tag.name || 'this tag'}”?`)) {
+        if (await confirmSheet(t('tags.deleteConfirm', { name: tag.name || t('tags.thisTag') }), { ok: t('common.delete') })) {
           await dbDelete('tags', tag.id);
           saved = true;
           s.close();
@@ -149,7 +150,7 @@ function editTag(existing) {
         saved = true;
         s.close();
       } catch (err) {
-        toast(`Couldn't save: ${err.message}`);
+        toast(t('tags.saveFail', { msg: err.message }));
       }
     });
     s.closed.then(() => {
