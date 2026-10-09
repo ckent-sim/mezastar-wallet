@@ -48,10 +48,20 @@ self.addEventListener('fetch', (e) => {
   const url = new URL(req.url);
 
   if (url.origin === location.origin) {
-    // navigations → cached index.html; other shell files cache-first
+    // network-first (fresh updates when online, 3 s timeout), cache fallback when offline
     e.respondWith((async () => {
-      const cached = await caches.match(req.mode === 'navigate' ? 'index.html' : req, { ignoreSearch: true });
-      return cached ?? fetch(req);
+      const key = req.mode === 'navigate' ? 'index.html' : req;
+      const cache = await caches.open(SHELL);
+      try {
+        const res = await Promise.race([
+          fetch(req),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000)),
+        ]);
+        if (res.ok) cache.put(key, res.clone());
+        return res;
+      } catch {
+        return (await cache.match(key, { ignoreSearch: true })) ?? Response.error();
+      }
     })());
     return;
   }

@@ -301,28 +301,28 @@ async function openScan(item) {
   const canvas = el.querySelector('canvas');
   let framed = false;
   const paint = () => (framed ? drawCard(canvas, item) : drawPlain(canvas, item, CARD_PX));
-  await paint();
 
+  // Wake lock / fullscreen are best-effort and may never settle in some webviews — don't await them.
   let lock = null;
-  try {
-    lock = await navigator.wakeLock?.request('screen');
-  } catch { /* not supported / denied */ }
-  try {
-    await document.documentElement.requestFullscreen?.({ navigationUI: 'hide' });
-  } catch { /* optional */ }
+  navigator.wakeLock?.request('screen').then((l) => (lock = l), () => {});
+  document.documentElement.requestFullscreen?.({ navigationUI: 'hide' })?.catch(() => {});
 
-  el.addEventListener('click', async (e) => {
+  const close = () => {
+    lock?.release?.().catch(() => {});
+    if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
+    window.removeEventListener('hashchange', close);
+    el.remove();
+  };
+  window.addEventListener('hashchange', close);
+  el.addEventListener('click', (e) => {
     const act = e.target.closest('[data-act]')?.dataset.act;
     if (act === 'mode') {
       framed = !framed;
       e.target.textContent = framed ? 'Show plain' : 'Show framed';
       paint();
-    } else if (act === 'close') {
-      lock?.release?.();
-      if (document.fullscreenElement) document.exitFullscreen?.();
-      el.remove();
-    }
+    } else if (act === 'close') close();
   });
+  await paint();
 }
 
 // ---------- screens ----------
