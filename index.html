@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Mezastar Wallet</title>
+  <meta name="description" content="Offline wallet for your Mezastar E-TrainerID, tags and support Pokémon QR codes.">
+  <meta name="theme-color" content="#16161d">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="stylesheet" href="css/app.css">
+  <script src="vendor/jsQR.js" defer></script>
+  <script src="js/app.js" type="module"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="ball" aria-hidden="true"></span>Mezastar Wallet</div>
+    <span class="offline-pill" hidden>Offline</span>
+  </header>
+  <main id="view" tabindex="-1"></main>
+  <nav class="tabbar" aria-label="Sections">
+    <a href="#trainer" data-tab="trainer"><span aria-hidden="true">🪪</span>Trainer</a>
+    <a href="#tags" data-tab="tags"><span aria-hidden="true">🏷️</span>Tags</a>
+    <a href="#support" data-tab="support"><span aria-hidden="true">⭐</span>Support</a>
+    <a href="#settings" data-tab="settings"><span aria-hidden="true">⚙️</span>Settings</a>
+  </nav>
+  <div id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

@@ -2,13 +2,29 @@
 // byte-exact re-encode (qrcode-generator, byte mode).
 import qrcode from '../vendor/qrcode.mjs';
 
-/** @returns {{bytes:number[], text:string} | null} */
+/** @returns {{bytes:number[], text:string, rect:{x,y,w,h}} | null} rect = QR bounds in input px */
 export function decodeQr({ data, width, height }) {
   const jsQR = globalThis.jsQR;
   if (!jsQR) throw new Error('jsQR not loaded');
   const r = jsQR(data, width, height, { inversionAttempts: 'attemptBoth' });
   if (!r || !r.binaryData.length) return null;
-  return { bytes: Array.from(r.binaryData), text: r.data };
+  const l = r.location;
+  const xs = [l.topLeftCorner.x, l.topRightCorner.x, l.bottomLeftCorner.x, l.bottomRightCorner.x];
+  const ys = [l.topLeftCorner.y, l.topRightCorner.y, l.bottomLeftCorner.y, l.bottomRightCorner.y];
+  const x = Math.min(...xs);
+  const y = Math.min(...ys);
+  const rect = { x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y };
+  return { bytes: Array.from(r.binaryData), text: r.data, rect };
+}
+
+/** True when re-encoding the bytes decodes back to exactly the same bytes. */
+export function verifyReencode(bytes) {
+  try {
+    const back = decodeQr(matrixToImageData(encodeQr(bytes), 4, 4));
+    return !!back && back.bytes.length === bytes.length && back.bytes.every((b, i) => b === bytes[i]);
+  } catch {
+    return false; // e.g. payload too long for any QR version
+  }
 }
 
 /** Byte-mode encode of the exact bytes, error correction M. */

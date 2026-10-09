@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+<rect x="2" y="2" width="96" height="96" rx="22" fill="#e3350d"/>
+<rect x="16.6" y="16.6" width="66.8" height="66.8" rx="7" fill="#fff"/>
+<g fill="#1b1b1f"><rect x="24.4" y="24.4" width="19.4" height="19.4"/><rect x="57.8" y="24.4" width="19.4" height="19.4"/><rect x="24.4" y="57.8" width="19.4" height="19.4"/></g>
+<g fill="#fff"><rect x="27.5" y="27.5" width="13.2" height="13.2"/><rect x="60.9" y="27.5" width="13.2" height="13.2"/><rect x="27.5" y="60.9" width="13.2" height="13.2"/></g>
+<g fill="#1b1b1f"><rect x="30.6" y="30.6" width="7" height="7"/><rect x="64" y="30.6" width="7" height="7"/><rect x="30.6" y="64" width="7" height="7"/></g>
+<polygon fill="#ffcb05" stroke="#1b1b1f" stroke-width="2" stroke-linejoin="round" points="66.7,48.2 71.3,60.4 84.3,61.0 74.1,69.1 77.6,81.7 66.7,74.5 55.8,81.7 59.3,69.1 49.1,61.0 62.1,60.4"/>
+</svg>
