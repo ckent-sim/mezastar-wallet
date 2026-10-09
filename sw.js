@@ -1,5 +1,5 @@
 // Offline service worker: precached app shell (cache-first) + runtime cache for sprites.
-const VERSION = 'v5';
+const VERSION = 'v7';
 const SHELL = `mz-shell-${VERSION}`;
 const RUNTIME = 'mz-sprites';
 const ASSETS = [
@@ -44,7 +44,10 @@ const ASSETS = [
 ];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(SHELL).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting()));
+  // cache: 'reload' bypasses the browser HTTP cache so a new version never precaches stale files
+  e.waitUntil(caches.open(SHELL)
+    .then((c) => c.addAll(ASSETS.map((url) => new Request(url, { cache: 'reload' }))))
+    .then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', (e) => {
@@ -67,8 +70,13 @@ self.addEventListener('fetch', (e) => {
       const key = req.mode === 'navigate' ? 'index.html' : req;
       const cache = await caches.open(SHELL);
       try {
+        // 'no-cache' revalidates with the server (ETag → cheap 304) instead of trusting
+        // GitHub Pages' 10-minute max-age, so new deploys show up on the next launch.
+        const fresh = req.mode === 'navigate'
+          ? fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' })
+          : fetch(req, { cache: 'no-cache' });
         const res = await Promise.race([
-          fetch(req),
+          fresh,
           new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000)),
         ]);
         if (res.ok) cache.put(key, res.clone());

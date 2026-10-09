@@ -44,5 +44,22 @@ if (!window.jsQR) await new Promise((r) => window.addEventListener('DOMContentLo
 route();
 
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
-  navigator.serviceWorker.register('sw.js').catch((e) => console.warn('SW registration failed', e));
+  // A page that was already open keeps running old code after a new SW takes over,
+  // so offer a reload (the very first install has no previous controller → no banner).
+  const hadController = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadController || document.querySelector('.update-bar')) return;
+    const bar = document.createElement('div');
+    bar.className = 'update-bar';
+    bar.setAttribute('role', 'status');
+    bar.innerHTML = `<span>${t('app.updated')}</span><button class="btn small primary">${t('app.reload')}</button>`;
+    bar.querySelector('button').addEventListener('click', () => location.reload());
+    document.body.append(bar);
+  });
+  navigator.serviceWorker.register('sw.js').then((reg) => {
+    // installed PWAs can stay open for days: check for a new version whenever they come back
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') reg.update().catch(() => {});
+    });
+  }).catch((e) => console.warn('SW registration failed', e));
 }

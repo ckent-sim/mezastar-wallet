@@ -331,3 +331,11 @@ input[type=color] { width: 44px; height: 34px; border: 1px solid var(--line); bo
 .support-tile canvas { display: block; width: 100%; aspect-ratio: 1080 / 1350; border-radius: 14px; box-shadow: 0 6px 18px rgba(0,0,0,.35); }
 .support-tile:focus-visible { outline: 2px solid var(--yellow); outline-offset: 3px; }
 .support-canvas { display: block; width: 100%; max-width: 420px; margin: 0 auto 14px; aspect-ratio: 1080 / 1350; border-radius: 18px; }
+
+/* ---------- update banner ---------- */
+.update-bar {
+  position: fixed; left: 50%; top: calc(env(safe-area-inset-top) + 58px); transform: translateX(-50%); z-index: 70;
+  display: flex; align-items: center; gap: 12px; padding: 8px 8px 8px 16px; border-radius: 14px;
+  background: var(--surface-2); border: 1px solid var(--yellow); box-shadow: 0 8px 24px rgba(0,0,0,.45);
+  font-weight: 700; white-space: nowrap;
+}

@@ -6,6 +6,8 @@ export const LANGS = { en: 'English', zh: '简体中文' };
 export const STRINGS = {
   en: {
     'app.offline': 'Offline',
+    'app.updated': 'New version ready',
+    'app.reload': 'Reload',
     'tab.trainer': 'Trainer',
     'tab.tags': 'Tags',
     'tab.support': 'Support',
@@ -185,6 +187,8 @@ export const STRINGS = {
 
   zh: {
     'app.offline': '离线',
+    'app.updated': '新版本已就绪',
+    'app.reload': '重新加载',
     'tab.trainer': '训练家',
     'tab.tags': '卡匣',
     'tab.support': '支援',
